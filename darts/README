@@ -1,0 +1,5 @@
+To build, run build.sh.
+
+There are two implementations. One in C and another that is a C extension for python. The C version compiles to darts and the python to _darts.so.
+
+To use the python version, import _darts. Then use the function _darts.darts.

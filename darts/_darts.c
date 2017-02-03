@@ -1,6 +1,6 @@
 //Matthew Soulanille
 
-#ifdef LINUX
+#ifdef __linux__
   #include <Python.h>
 #elif defined(__APPLE__)
   #include <Python/Python.h>

@@ -24,10 +24,18 @@ count: The number of darts to throw\n\
 accuracy: How much to scale the randomly generated numbers (in cm)\n\
 target: Which number to throw at (1 or 20)";
 
+static char randomNormal_docstring[] =
+  "randomNormal(scale)\n\n\
+Generates a random point around [0, 0] with the first standard deviation's \
+radius scaled to scale.";
+
 static PyObject * darts_darts(PyObject *self, PyObject *args);
+
+static PyObject * darts_randomNormal(PyObject *self, PyObject *args);
 
 static PyMethodDef DartsMethods[] = {
   {"darts", darts_darts, METH_VARARGS, darts_docstring},
+  {"randomNormal", darts_randomNormal, METH_VARARGS, randomNormal_docstring},
   {NULL, NULL, 0, NULL}
 };
 
@@ -85,4 +93,25 @@ static PyObject *darts_darts(PyObject *self, PyObject *args){
   
   return Py_BuildValue("d", value);
  
+}
+
+
+static PyObject * darts_randomNormal(PyObject *self, PyObject *args) {
+  int scale;
+
+  if (!PyArg_ParseTuple(args, "i", &scale)) {
+    return NULL;
+  }
+
+  // end arg parsing
+
+  double r[2];
+  double *randomPoint = randomNormal(r, scale);
+
+  PyObject* list =  PyList_New(0);
+
+  PyList_Append(list, Py_BuildValue("d", randomPoint[0]));
+  PyList_Append(list, Py_BuildValue("d", randomPoint[1]));
+  return list;
+  
 }

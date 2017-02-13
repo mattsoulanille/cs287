@@ -151,15 +151,16 @@ double darts(long count, double accuracy, int target) {
 
 
 
-double darts_parallel(long count, double accuracy, int target, int num_threads) {
+double darts_parallel(long count, double accuracy, int target) {
   // Divides work between multiple threads that run the above darts() function.
+  static int num_threads = 8;
   omp_set_num_threads(num_threads);
   static int workunit_size = 50000;
 
 
   int workunit_count = (int) (count / workunit_size);
 
-  int last_size;
+  int last_size = 0;
   if (count % workunit_size > 0) {
       workunit_count ++;
       last_size = count % workunit_size;
@@ -181,7 +182,7 @@ double darts_parallel(long count, double accuracy, int target, int num_threads) 
   
 #pragma omp parallel for shared(averages) private(i)
   for (i=0; i < workunit_count; i++) {
-    int tid = omp_get_thread_num();
+    //int tid = omp_get_thread_num();
 
     averages[i] = darts(workunit_sizes[i], accuracy, target);
 

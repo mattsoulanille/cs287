@@ -19,13 +19,16 @@ def throw20(accuracy):
 def throw1(accuracy):
     return throw(accuracy, 1);
 
-
+"""
+# Multithreaded in python
 p = Pool(10);
 points20 = zip(*p.map(throw20, accuracies))
 points1 = zip(*p.map(throw1, accuracies))
+"""
 
-#points20 = zip(*[[a, _darts.darts(count, a, 20)] for a in accuracies])
-#points1 = zip(*[[a, _darts.darts(count, a, 1)] for a in accuracies])
+# Multithreaded in c
+points20 = zip(*[[a, _darts.darts_parallel(count, a, 20)] for a in accuracies])
+points1 = zip(*[[a, _darts.darts_parallel(count, a, 1)] for a in accuracies])
 t1 = time.time()
 print("Execution time: " + str(t1-t0))
 

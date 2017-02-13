@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     }
 
     // Uses multithreaded darts
-    double averageScore = darts_parallel(count, accuracy, target, 4);
+    double averageScore = darts_parallel(count, accuracy, target);
     printf("Average score:\t%f\n", averageScore);
     return 0;
   }

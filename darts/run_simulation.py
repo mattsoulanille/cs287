@@ -5,8 +5,10 @@ from multiprocessing import Pool
 import time
 
 count = 500000
+
 t0 = time.time()
-accuracies = np.arange(0,50,0.5);
+#accuracies = np.arange(0,50,0.0625);
+accuracies = np.arange(0,50,0.25);
 #accuracies = range(50);
 
 def throw(accuracy, target):
@@ -33,7 +35,7 @@ print("Execution time: " + str(t1-t0))
 plt.plot(points20[0], points20[1], label="Aiming at 20")
 plt.plot(points1[0], points1[1], label="Aiming at 1")
 plt.legend()
-plt.xlabel("Standard deviations")
+plt.xlabel("Radius of first standard deviation (in mm)")
 plt.ylabel("Average score")
 plt.title("Monte Carlo Darts")
 plt.show()

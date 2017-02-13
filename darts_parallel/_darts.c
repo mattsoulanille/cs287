@@ -25,9 +25,11 @@ accuracy: How much to scale the randomly generated numbers (in cm)\n\
 target: Which number to throw at (1 or 20)";
 
 static PyObject * darts_darts(PyObject *self, PyObject *args);
+static PyObject * darts_darts_parallel(PyObject *self, PyObject *args);
 
 static PyMethodDef DartsMethods[] = {
   {"darts", darts_darts, METH_VARARGS, darts_docstring},
+  {"darts_parallel", darts_darts_parallel, METH_VARARGS, darts_docstring},
   {NULL, NULL, 0, NULL}
 };
 
@@ -81,6 +83,35 @@ static PyObject *darts_darts(PyObject *self, PyObject *args){
   // end arg parsing
 
   double value = darts(count, accuracy, target);
+  //double value = darts(50, 5, 1);
+  
+  return Py_BuildValue("d", value);
+ 
+}
+
+static PyObject *darts_darts_parallel(PyObject *self, PyObject *args){
+  long count;
+  double accuracy;
+  int target;
+
+  /* const int *t; */
+  /* if (!PyArg_ParseTuple(args, "i", &t)) { */
+  /*   return NULL; */
+  /* } */
+  
+  if (!PyArg_ParseTuple(args, "ldi", &count, &accuracy, &target)) {
+    return NULL;
+  }
+
+
+  if ((target != 1) && (target != 20)) {
+    PyErr_SetString(PyExc_ValueError, "Target must be 1 or 20");
+    return NULL;
+  }
+
+  // end arg parsing
+
+  double value = darts_parallel(count, accuracy, target);
   //double value = darts(50, 5, 1);
   
   return Py_BuildValue("d", value);

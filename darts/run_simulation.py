@@ -7,21 +7,21 @@ import time
 count = 500000
 
 t0 = time.time()
-#accuracies = np.arange(0,50,0.0625);
-accuracies = np.arange(0,50,0.25);
-#accuracies = range(50);
+#accuracies = np.arange(0,50,0.0625)
+accuracies = np.arange(0,50,0.25)
+#accuracies = range(50)
 
 def throw(accuracy, target):
     return [accuracy, _darts.darts(count, accuracy, target)]
 
 def throw20(accuracy):
-    return throw(accuracy, 20);
+    return throw(accuracy, 20)
 
 def throw1(accuracy):
-    return throw(accuracy, 1);
+    return throw(accuracy, 1)
 
 
-p = Pool(10);
+p = Pool(10)
 points20 = zip(*p.map(throw20, accuracies))
 points1 = zip(*p.map(throw1, accuracies))
 

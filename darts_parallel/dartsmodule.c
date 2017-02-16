@@ -155,7 +155,7 @@ double darts_parallel(long count, double accuracy, int target) {
   // Divides work between multiple threads that run the above darts() function.
   static int num_threads = 8;
   omp_set_num_threads(num_threads);
-  static int workunit_size = 50000;
+  static int workunit_size = 10000;
 
 
   int workunit_count = (int) (count / workunit_size);
@@ -198,4 +198,63 @@ double darts_parallel(long count, double accuracy, int target) {
   }
 
   return result;
+}
+
+
+
+double darts_optimized(long count, double accuracy, int target) {
+  // Not actually faster relative to darts_parallel
+  static int num_threads = 8;
+  omp_set_num_threads(num_threads);
+
+  double *targetPos;
+  double c[2];
+  if (target == 1) {
+    // middle of 1 slice
+    double s = (SLICE_SIZE * 4) - (SLICE_SIZE / 2);
+    
+    // middle of *3 area
+    double r = 103.0;
+    double polar[2] = {r, s};
+
+    targetPos = toCartesian(polar, c);
+  }
+  else if (target == 20) {
+    // middle of 20 slice
+    double s = (SLICE_SIZE * 5) - (SLICE_SIZE / 2);
+    
+    // middle of 3* area
+    double r = 103;
+    double polar[2] = {r, s};
+
+    targetPos = toCartesian(polar, c);
+  }
+  else {
+    return -10000000.0;
+  }
+
+  long x;
+
+
+  long long totalScore = 0;
+#pragma omp parallel for reduction(+:totalScore)
+  for (x = 0; x < count; x++) {
+    double r[2];
+    double *randomPoint = randomNormal(r, accuracy);
+    
+    randomPoint[0] += targetPos[0];
+    randomPoint[1] += targetPos[1];
+    
+    int score = scorePos(randomPoint);
+    // for omp reduction
+    totalScore += (long long) score;
+
+  }
+  //printf("%lld \n", totalScore);
+  double averageScore =  (totalScore / (double) count);
+
+
+  //printf("%f\n", averageScore);
+  return averageScore;
+
 }

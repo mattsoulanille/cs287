@@ -28,8 +28,10 @@ double* toPolar(double pos[], double* polar) {
 double* randomNormal(double* outPos, double scale) {
   // generates a normally distributed (around 0,0) cartesian
   // point
-  double r1 = ((double) rand()) / RAND_MAX;
-  double r2 = ((double) rand()) / RAND_MAX;
+  //  double r1 = ((double) rand()) / RAND_MAX;
+  //  double r2 = ((double) rand()) / RAND_MAX;
+  double r1 = drand48();
+  double r2 = drand48();
   //printf("%f\n", r1);
   outPos[0] = (sqrt(-2*log(r1)) * cos(2*M_PI*r2)) * scale;
   outPos[1] = (sqrt(-2*log(r1)) * sin(2*M_PI*r2)) * scale;

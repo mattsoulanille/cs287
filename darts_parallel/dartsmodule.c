@@ -153,9 +153,9 @@ double darts(long count, double accuracy, int target) {
 
 
 
-double darts_parallel(long count, double accuracy, int target) {
+double darts_parallel(long count, double accuracy, int target, int num_threads) {
   // Divides work between multiple threads that run the above darts() function.
-  static int num_threads = 8;
+  // static int num_threads = 8;
   omp_set_num_threads(num_threads);
   static int workunit_size = 10000;
 
@@ -204,9 +204,9 @@ double darts_parallel(long count, double accuracy, int target) {
 
 
 
-double darts_optimized(long count, double accuracy, int target) {
+double darts_parallel2(long count, double accuracy, int target, int num_threads) {
   // Not actually faster relative to darts_parallel
-  static int num_threads = 8;
+  // static int num_threads = 8;
   omp_set_num_threads(num_threads);
 
   double *targetPos;

@@ -27,12 +27,12 @@ target: Which number to throw at (1 or 20)";
 
 static PyObject * darts_darts(PyObject *self, PyObject *args);
 static PyObject * darts_darts_parallel(PyObject *self, PyObject *args);
-static PyObject * darts_darts_optimized(PyObject *self, PyObject *args);
+static PyObject * darts_darts_parallel2(PyObject *self, PyObject *args);
 
 static PyMethodDef DartsMethods[] = {
   {"darts", darts_darts, METH_VARARGS, darts_docstring},
   {"darts_parallel", darts_darts_parallel, METH_VARARGS, darts_docstring},
-  {"darts_optimized", darts_darts_optimized, METH_VARARGS, darts_docstring},
+  {"darts_parallel2", darts_darts_parallel2, METH_VARARGS, darts_docstring},
   {NULL, NULL, 0, NULL}
 };
 
@@ -96,13 +96,13 @@ static PyObject *darts_darts_parallel(PyObject *self, PyObject *args){
   long count;
   double accuracy;
   int target;
-
+  int num_threads;
   /* const int *t; */
   /* if (!PyArg_ParseTuple(args, "i", &t)) { */
   /*   return NULL; */
   /* } */
   
-  if (!PyArg_ParseTuple(args, "ldi", &count, &accuracy, &target)) {
+  if (!PyArg_ParseTuple(args, "ldii", &count, &accuracy, &target, &num_threads)) {
     return NULL;
   }
 
@@ -114,7 +114,7 @@ static PyObject *darts_darts_parallel(PyObject *self, PyObject *args){
 
   // end arg parsing
 
-  double value = darts_parallel(count, accuracy, target);
+  double value = darts_parallel(count, accuracy, target, num_threads);
   //double value = darts(50, 5, 1);
   
   return Py_BuildValue("d", value);
@@ -122,17 +122,17 @@ static PyObject *darts_darts_parallel(PyObject *self, PyObject *args){
 }
 
 
-static PyObject *darts_darts_optimized(PyObject *self, PyObject *args){
+static PyObject *darts_darts_parallel2(PyObject *self, PyObject *args){
   long count;
   double accuracy;
   int target;
-
+  int num_threads;
   /* const int *t; */
   /* if (!PyArg_ParseTuple(args, "i", &t)) { */
   /*   return NULL; */
   /* } */
   
-  if (!PyArg_ParseTuple(args, "ldi", &count, &accuracy, &target)) {
+  if (!PyArg_ParseTuple(args, "ldii", &count, &accuracy, &target, &num_threads)) {
     return NULL;
   }
 
@@ -144,7 +144,7 @@ static PyObject *darts_darts_optimized(PyObject *self, PyObject *args){
 
   // end arg parsing
 
-  double value = darts_optimized(count, accuracy, target);
+  double value = darts_parallel2(count, accuracy, target, num_threads);
   //double value = darts(50, 5, 1);
   
   return Py_BuildValue("d", value);

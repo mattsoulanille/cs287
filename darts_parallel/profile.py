@@ -48,8 +48,8 @@ def profile_threads():
     plt.xlabel("Number of Threads")
     plt.ylabel("Average Runtime (seconds) from " + str(trial_count) + " trials")
     plt.xticks(threads)
-    plt.plot(threads, p, '-', label="First parallelization method")
-    plt.plot(threads, p2, '-', label="Second parallelization method")
+    plt.plot(threads, p, 'g-', label="First parallelization method")
+    plt.plot(threads, p2, 'r-', label="Second parallelization method")
     plt.legend()
     plt.title("Execution Time for " + str(darts_thrown) + " Darts")
 
@@ -88,8 +88,8 @@ def profile_number():
     plt.xlabel("Number of Darts")
     plt.ylabel("Average Runtime (seconds) from " + str(trial_count) + " trials")
     #plt.xticks(threads)
-    plt.plot(dart_counts, times, '.', label="First parallelization method")
-    plt.plot(dart_counts, times2, '.', label="Second parallelization method")
+    plt.plot(dart_counts, times, 'g.', label="First parallelization method")
+    plt.plot(dart_counts, times2, 'r.', label="Second parallelization method")
     plt.legend()
     plt.title("Execution time vs Darts Thrown")
 

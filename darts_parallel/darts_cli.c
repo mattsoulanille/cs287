@@ -4,6 +4,7 @@
 #include <math.h>
 #include <time.h>
 #include "dartsmodule.c"
+#define THREADS 8
 
 // Multithreaded
 int main(int argc, char **argv) {
@@ -22,7 +23,7 @@ int main(int argc, char **argv) {
     }
 
     // Uses multithreaded darts
-    double averageScore = darts_parallel(count, accuracy, target);
+    double averageScore = darts_parallel(count, accuracy, target, THREADS);
     printf("Average score:\t%f\n", averageScore);
     return 0;
   }

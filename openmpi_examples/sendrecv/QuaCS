@@ -9,8 +9,8 @@
 
 # NOTE: do NOT use turing!!
 
-cook.cs.haverford.edu slots=4 max-slots=4
-yao.cs.haverford.edu slots=4 max-slots=4
+cook.cs.haverford.edu slots=4 max-slots=4 username=msoulanill
+# yao.cs.haverford.edu slots=4 max-slots=4
 #lovelace.cs.haverford.edu slots=4 max-slots=4
 # liskov.cs.haverford.edu slots=4 max-slots=4
 # vonahn.cs.haverford.edu slots=4 max-slots=4

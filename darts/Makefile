@@ -4,4 +4,4 @@ SHELL=/bin/sh
 .SUFFIXES: .c
 
 darts: darts_cli.c
-	$(CC) $< -o $@
+	$(CC) $< -o $@ -lm

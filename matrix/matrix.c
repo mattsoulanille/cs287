@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 
 // My dad helped me with some of the text input, but I thought of
 // all the matrix multiplication.
@@ -26,16 +27,17 @@ void printm(double *matrix, int dim) {
 int main(int argc, char* argv[]) {
 
   FILE *matrixFile;
-  if (argc == 3) {
+  if (argc == 4) {
 
     matrixFile = fopen(argv[1], "r");
   }
   else {
-    printf("Usage: matrix (matrixFile) (dimension)\n");
+    printf("Usage: matrix (matrixFile) (dimension) (parallel 0/1)\n");
     return 1;
   }
 
   int dim = atoi(argv[2]);
+  int parallel = atoi(argv[3]);
   // http://stackoverflow.com/questions/3501338/c-read-file-line-by-line
   //char buf[256];
   char *line = NULL;
@@ -66,8 +68,18 @@ int main(int argc, char* argv[]) {
   //  printm( matrix, dim);
 
   double *result;
-  result = calloc(sizeof(double), dim*dim);
-  multiply(matrix, matrix, dim, result);
+  //  result = calloc(sizeof(double), dim*dim);
+
+  clock_t begin = clock(); //start clock
+  if (parallel) {
+    multiply_parallel(matrix, matrix, dim, result);
+  }
+  else {
+    multiply(matrix, matrix, dim, result);
+  }
+  //  clock_t end = clock(); //stop clock
+  //  double time = (double) (end - begin) / CLOCKS_PER_SEC;
+  //  printf("time : %f\n", time);
   //printm( result, dim);
   
 }

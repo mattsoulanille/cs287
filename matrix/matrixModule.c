@@ -8,11 +8,6 @@ double dot(double* v1, double* v2, int len) {
   // Calculate dot product of vectors
   //int len = (int) (sizeof(v1) / sizeof(v1[0]));
 
-  //if ((int) (sizeof(v2) / sizeof(v2[0])) != len) {
-  //    return -1000000000000.0; // this is terrible. I don't know how to do exceptions
-    //  }
-
-
   double result = 0;
   int i;
   for (i = 0; i < len; i++) {
@@ -33,7 +28,7 @@ double* transpose(double* m, int dim, double* result) {
   
   int h; // height
   int w; // width
-
+  
   for (w = 0; w < dim; w++) {
     for (h = 0; h < dim; h++) {
       // result[h][w] = m[w][h];
@@ -50,7 +45,7 @@ double* multiply(double* m1, double* m2, int dim, double* result) {
 
   // Construct memory for resultant transpose matrix
 
-  
+
   double *m2_transpose = calloc(sizeof(double), dim*dim);
 
   transpose(m2, dim, m2_transpose);

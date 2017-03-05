@@ -64,7 +64,8 @@ static PyObject *matrix_dot(PyObject *self, PyObject *args){
 
   PyObject *py_vector1;
   PyObject *py_vector2;
-  if (!PyArg_ParseTuple(args, "OO", &py_vector1, &py_vector2)) {
+  int dim;
+  if (!PyArg_ParseTuple(args, "OOi", &py_vector1, &py_vector2, &dim)) {
     return NULL;
   }
 
@@ -80,13 +81,12 @@ static PyObject *matrix_dot(PyObject *self, PyObject *args){
     return NULL;
   }
 
-  size_t size = sizeof(double) * 10;
-  double *v1 = malloc(size);
-  double *v2 = malloc(size);
-  
+  double *v1 = calloc(sizeof(double), dim);
+  double *v2 = calloc(sizeof(double), dim);
+
   
   int i = 0;
-  while (1) {
+  for (i=0; i<dim; i++) {
     PyObject *next1 = PyIter_Next(iter1);
     PyObject *next2 = PyIter_Next(iter2);
     if (!next1 || !next2) {
@@ -95,6 +95,8 @@ static PyObject *matrix_dot(PyObject *self, PyObject *args){
 	PyErr_SetString(PyExc_ValueError, "Iterables of unequal length");
 	return NULL;
       }
+      PyErr_SetString(PyExc_ValueError, "Size error");
+      return NULL;
       // nothing left in the iterator
       break;
     }
@@ -105,22 +107,9 @@ static PyObject *matrix_dot(PyObject *self, PyObject *args){
       return NULL;
     }
 
-    if (size < i*sizeof(double)) {
-      size *= 2;
-      v1 = realloc(v1, size);
-      v2 = realloc(v2, size);
-    }
-    
-    //v1[i] = (double) next1;
-    //v2[i] = (double) next2;
     v1[i] = PyFloat_AsDouble(next1);
     v2[i] = PyFloat_AsDouble(next2);
-    i++;
   }
-
-  v1 = realloc(v1, i*sizeof(double));
-  v2 = realloc(v2, i*sizeof(double));
-
 
 
   //printf("%lf", v1[0]);
@@ -200,56 +189,72 @@ static PyObject *matrix_multiply(PyObject *self, PyObject *args){
 
   PyObject *py_matrix1;
   PyObject *py_matrix2;
+  int dim;
 
-  if (!PyArg_ParseTuple(args, "OO", &py_matrix1, &py_matrix2)) {
+  if (!PyArg_ParseTuple(args, "OOi", &py_matrix1, &py_matrix2, &dim)) {
     return NULL;
   }
 
-  
-  double** m1 = malloc(1);
-  double** m2 = malloc(1);
-  int size1[2];
-  int size2[2];
-  parseMatrix(py_matrix1, m1, size1);
-  parseMatrix(py_matrix2, m2, size2);
 
-  if (size1[1] != size2[0]) {
-    PyErr_SetString(PyExc_ValueError, "Matrix size mismatch");
+  PyObject *iter1 = PyObject_GetIter(py_matrix1);
+  PyObject *iter2 = PyObject_GetIter(py_matrix2);
+  if (!iter1 || !iter2) {
+    PyErr_SetString(PyExc_ValueError, "Object not iterable");
     return NULL;
+  }
+
+  double *m1 = calloc(sizeof(double), dim*dim);
+  double *m2 = calloc(sizeof(double), dim*dim);
+  
+  int w;
+  int h;
+  for (h=0; h<dim; h++) {
+    PyObject *nextrow1 = PyIter_Next(iter1);
+    PyObject *nextrow2 = PyIter_Next(iter2);
+
+    if (!nextrow1 || !nextrow2) {
+      PyErr_SetString(PyExc_ValueError, "Matrix Size error (height)");
+      return NULL;
+    }
+
+    PyObject *rowiter1 = PyObject_GetIter(nextrow1);
+    PyObject *rowiter2 = PyObject_GetIter(nextrow2);
+
+    for (w=0; w<dim; w++) {
+      PyObject *nextvalue1 = PyIter_Next(rowiter1);
+      PyObject *nextvalue2 = PyIter_Next(rowiter2);
+      
+      if (!nextvalue1 || !nextvalue2) {
+	PyErr_SetString(PyExc_ValueError, "Matrix Size error (width)");
+	return NULL;
+      }
+
+      *(m1 + h*dim + w) = PyFloat_AsDouble(nextvalue1);
+      *(m2 + h*dim + w) = PyFloat_AsDouble(nextvalue2);
+    }
   }
 
   // end arg parsing
 
-  double resultSize[2];
-  resultSize[0] = size1[0];
-  resultSize[1] = size2[1];
     
-  double **result = malloc(resultSize[0] * sizeof(double*));
+  double *result = calloc(sizeof(double), dim*dim);
   
-  int i;
-  for (i=0; i<resultSize[0]; i++) {
-    result[i] = malloc(resultSize[1] * sizeof(double));
-  }
+  multiply(m1, m2, dim, result);
 
-  
-  multiply(m1, size1, m2, size2, result);
-  //double value = darts(50, 5, 1);
+  PyObject *py_result = PyList_New(dim);
 
+  for (h=0; h<dim; h++) {
 
-  PyObject *py_result = PyList_New(resultSize[0]);
+    PyObject *py_row = PyList_New(dim);
 
-  for (i=0; i<resultSize[0]; i++) {
-
-    PyObject *py_row = PyList_New(resultSize[1]);
-
-    int j;
-    for (j=0; j<resultSize[1]; j++) {
-      PyList_SetItem(py_row, j, Py_BuildValue("d", result[0][1]));
+    for (w=0; w<dim; w++) {
+      PyList_SetItem(py_row, w, Py_BuildValue("d", *(result + h*dim + w) ));
     }
-    PyList_SetItem(py_result, i, py_row);
+    PyList_SetItem(py_result, h, py_row);
     
   }
     
   return py_result;
  
 }
+

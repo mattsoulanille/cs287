@@ -123,75 +123,14 @@ static PyObject *matrix_dot(PyObject *self, PyObject *args){
  
 }
 
-void parseMatrix(PyObject *py_matrix, double **m, int *size) {
-  PyObject *iterMatrix = PyObject_GetIter(py_matrix);
-
-  size_t heightSize = sizeof(double*) * 8;
-  size_t widthSize = sizeof(double) * 8;
-  m = realloc(m, heightSize);
-
-  int h = 0;
-  int w = 0;
-  while (1) {
-    PyObject *nextrow = PyIter_Next(iterMatrix);
-    
-    if (!nextrow) {
-      // nothing left in the iterator
-      break;
-    }
-
-    if (heightSize < sizeof(double*) * h) {
-      heightSize *= 2;
-      m = realloc(m, heightSize);
-    }
-
-    PyObject *row = PyObject_GetIter(nextrow);
-
-    m[h] = malloc(widthSize);
-    // iterate over a row
-    w = 0;
-    while (1) {
-      PyObject *nextvalue = PyIter_Next(row);
-      
-      if (!nextvalue) {
-	// nothing left in the iterator
-	break;
-      }
-
-      if (widthSize < sizeof(double) * w) {
-	heightSize *= 2;
-	m[h] = realloc(m, heightSize);
-      }
-
-      m[h][w] = PyFloat_AsDouble(nextvalue);
-      w++;
-    }
-    h++;
-  }
-
-  m = realloc(m, h * sizeof(double*));
-
-  int i;
-  for (i=0; i<w; i++) {
-    m[i] = realloc(m, w * sizeof(double));
-  }
-  
-  size[0] = heightSize;
-  size[1] = widthSize;
-
-  return;
-
-}
-
-			
-
 static PyObject *matrix_multiply(PyObject *self, PyObject *args){
 
   PyObject *py_matrix1;
   PyObject *py_matrix2;
   int dim;
+  int threads;
 
-  if (!PyArg_ParseTuple(args, "OOi", &py_matrix1, &py_matrix2, &dim)) {
+  if (!PyArg_ParseTuple(args, "OOii", &py_matrix1, &py_matrix2, &dim, &threads)) {
     return NULL;
   }
 
@@ -239,7 +178,7 @@ static PyObject *matrix_multiply(PyObject *self, PyObject *args){
     
   double *result = calloc(sizeof(double), dim*dim);
   
-  multiply(m1, m2, dim, result);
+  multiply_parallel(m1, m2, dim, result, threads);
 
   PyObject *py_result = PyList_New(dim);
 

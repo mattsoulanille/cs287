@@ -67,7 +67,7 @@ double* multiply(double* m1, double* m2, int dim, double* result) {
 
 }
 
-double* multiply_parallel(double* m1, double* m2, int dim, double* result) {
+double* multiply_parallel(double* m1, double* m2, int dim, double* result, int threads) {
   // elements of m1 (and m2) are arrays of the rows of the matrix
   // Check dimensions for sanity:
   //  double m2_transpose[m2_size[1]][m2_size[0]];
@@ -84,7 +84,8 @@ double* multiply_parallel(double* m1, double* m2, int dim, double* result) {
   int w; // width
   // height of first matrix
   // width of second
-#pragma omp parallel for collapse(2)
+
+#pragma omp parallel for collapse(2) num_threads(threads)
   for (h = 0; h < dim; h++) {
     for (w = 0; w < dim; w++) {
       // result[h][w] = dot(m1[h], m2_transpose[w], m1_size[1]);

@@ -56,6 +56,7 @@ int main(int argc, char *argv[]) {
   
   /* Add static module darts */
   init_matrix();
+  return 0;
 }
 
 static PyObject *matrix_dot(PyObject *self, PyObject *args){

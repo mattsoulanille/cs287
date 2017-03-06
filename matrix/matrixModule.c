@@ -46,19 +46,22 @@ double* multiply(double* m1, double* m2, int dim, double* result) {
   // Construct memory for resultant transpose matrix
 
 
-  double *m2_transpose = calloc(sizeof(double), dim*dim);
+  //  double *m2_transpose = calloc(sizeof(double), dim*dim);
 
-  transpose(m2, dim, m2_transpose);
+  //  transpose(m2, dim, m2_transpose);
 
 
   int h; // height
   int w; // width
+  int d; // dot product index
   // height of first matrix
   // width of second
   for (h = 0; h < dim; h++) {
     for (w = 0; w < dim; w++) {
-      // result[h][w] = dot(m1[h], m2_transpose[w], m1_size[1]);
-      *(result + dim*h + w) = dot( (m1 + dim*h), (m2_transpose + dim*w), dim );
+      for (d = 0; d < dim; d++) {
+	// result[h][w] = dot(m1[h], m2_transpose[w], m1_size[1]);
+	*(result + dim*h + w) += *(m1 + h*dim + d) * *(m2 + d*dim + w);
+      }
     }
   }
 
@@ -75,21 +78,26 @@ double* multiply_parallel(double* m1, double* m2, int dim, double* result, int t
   // Construct memory for resultant transpose matrix
 
   
-  double *m2_transpose = calloc(sizeof(double), dim*dim);
+  //  double *m2_transpose = calloc(sizeof(double), dim*dim);
 
-  transpose(m2, dim, m2_transpose);
+  //  transpose(m2, dim, m2_transpose);
 
 
   int h; // height
   int w; // width
+  int d; // dot product index
   // height of first matrix
   // width of second
-
-#pragma omp parallel for collapse(2) num_threads(threads)
+  //printf("test\n");
+#pragma omp parallel for collapse(2) num_threads(1) shared(result)
   for (h = 0; h < dim; h++) {
     for (w = 0; w < dim; w++) {
-      // result[h][w] = dot(m1[h], m2_transpose[w], m1_size[1]);
-      *(result + dim*h + w) = dot( (m1 + dim*h), (m2_transpose + dim*w), dim );
+
+      for (d = 0; d < dim; d++) {
+	// result[h][w] = dot(m1[h], m2_transpose[w], m1_size[1]);
+	*(result + dim*h + w) += *(m1 + h*dim + d) * *(m2 + d*dim + w);
+      }
+
     }
   }
 

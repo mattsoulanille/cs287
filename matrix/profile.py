@@ -18,7 +18,7 @@ def profile(function, count):
 def profile_threads(matrix):
     threads = [1,2,3,4,5,6,7,8] # Core count to try
     #threads = [1,2,3,4,5] # Core count to try
-    trial_count = 10
+    trial_count = 2
     size = len(matrix)
     
     def test_parallel(threads):

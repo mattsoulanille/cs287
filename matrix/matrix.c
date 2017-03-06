@@ -74,7 +74,7 @@ int main(int argc, char* argv[]) {
   //clock_t begin = clock(); //start clock
 
   if (parallel) {
-    multiply_parallel(matrix, matrix, dim, result);
+    multiply_parallel(matrix, matrix, dim, result, 4);
   }
   else {
     multiply(matrix, matrix, dim, result);

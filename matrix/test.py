@@ -16,4 +16,4 @@ with open("testfiles/e3inv.txt") as i:
     for row in i:
         e3inv.append( [float(x) for x in row.rstrip("\n").split("\t")] )
 
-print _matrix.multiply(e3,e3inv,3)
+print _matrix.multiply(e3,e3inv,3, 8)

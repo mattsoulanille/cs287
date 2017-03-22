@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
     // account for non-divisible matrix sizes.
     range[1] = dim;
   }
-
+  printf("Process %d has range [%d, %d]\n", rank, range[0], range[1]);
   //printf("calculating [%d, %d]\n", range[0], range[1]);
 
   // Allocate result buffer

@@ -118,9 +118,9 @@ int main(int argc, char *argv[]) {
 	
 	*(result + dim * (h - range[0]) + w ) += *(matrix + dim * h + i) * *(matrix + dim * i + w);
 	//printf("h: %d\tw: %d\ti: %d\n", h, w, i);
-	//printf("%lf\t", *(result + dim * (h - range[0]) + w ));
+	
       }
-
+      //printf("%lf\t", *(result + dim * (h - range[0]) + w ));
 
     }
     //printf("\n");    
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
     // Add this process's results to the matrix
     for (h = range[0]; h < range[1]; h++) {
       for (w = 0; w < dim; w++) {
-	*(productMatrix + h*dim + w) = *(result - range[0] + h*dim + w);
+	*(productMatrix + h*dim + w) = *(result + (h - range[0])*dim + w);
       }
     }
 
@@ -150,20 +150,24 @@ int main(int argc, char *argv[]) {
     int otherRange[2];
     // Get results from all other processes
     for (i = 1; i < size; i++) {
-      otherRange[0] = (size - rank - 1) * blockSize;
-      otherRange[1] = (size - rank) * blockSize;
+      // Other's rank = i
+      otherRange[0] = (size - i - 1) * blockSize;
+      otherRange[1] = (size - i) * blockSize;
       int otherResultSize = (otherRange[1] - otherRange[0]) * dim;
       double *otherResult = calloc(sizeof(double), otherResultSize);
       // printf("Getting result from process %d\n", i);
       MPI_Recv(otherResult, otherResultSize, MPI_DOUBLE, i, RESULT_TAG, MPI_COMM_WORLD, &status);
-
+      //printf("%lf\n", otherResult[0]);
 
 
       // add the other results to the final product
       for (h = otherRange[0]; h < otherRange[1]; h++) {
+	//printf("range: [%d, %d]:\t", otherRange[0], otherRange[1]);
 	for (w = 0; w < dim; w++) {
-	  *(productMatrix + h*dim + w) = *(otherResult - otherRange[0] + h*dim + w);
+	  //printf("%lf\t", *(otherResult + (h - otherRange[0])*dim + w));
+	  *(productMatrix + h*dim + w) = *(otherResult + (h - otherRange[0])*dim + w);
 	}
+	//printf("\n");
       }
 
     }

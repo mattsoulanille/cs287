@@ -74,18 +74,12 @@ int main(int argc, char *argv[]) {
     // read the matrix
     readMatrix(matrixFile, matrix, dim);
     // send the matrix to the others
-    for (i = 1; i < size; i++) {
-      // Maybe use mpi_bcast...
-      MPI_Send(matrix, dim*dim, MPI_DOUBLE, i, MATRIX_TAG, MPI_COMM_WORLD);
-    }
-  }
-  else {
-    // if not the host machine
-    // Get matrix
-    MPI_Recv(matrix, dim*dim, MPI_DOUBLE, 0, MATRIX_TAG, MPI_COMM_WORLD, &status);
-    //printm(matrix, dim);
   }
 
+  // Distribute the matrix to everyone. Also receives.
+  MPI_Bcast(matrix, dim*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+  // Split up problem
   int range[2];
   int blockSize = dim / size;
   range[0] = (size - rank - 1) * blockSize;
@@ -95,6 +89,8 @@ int main(int argc, char *argv[]) {
     // account for non-divisible matrix sizes.
     range[1] = dim;
   }
+
+  
   printf("Process %d has range [%d, %d]\n", rank, range[0], range[1]);
   //printf("calculating [%d, %d]\n", range[0], range[1]);
 
@@ -138,14 +134,14 @@ int main(int argc, char *argv[]) {
     double *productMatrix = calloc(sizeof(double), dim*dim);
 
 
-    // Add this process's results to the matrix
+    // Add this process(0)'s results to the matrix
     for (h = range[0]; h < range[1]; h++) {
       for (w = 0; w < dim; w++) {
 	*(productMatrix + h*dim + w) = *(result + (h - range[0])*dim + w);
       }
     }
 
-
+    
     
     int otherRange[2];
     // Get results from all other processes

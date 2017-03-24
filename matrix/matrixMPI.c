@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
   double *matrix;
   matrix = calloc(sizeof(double), dim*dim);
   double *productMatrix;
+  MPI_Request rq_matrix[dim];
   if (rank == 0) {
     // final result matrix
     productMatrix = calloc(sizeof(double), dim*dim);
@@ -149,10 +150,17 @@ int main(int argc, char *argv[]) {
       int otherResultSize = (otherRange[1] - otherRange[0]) * dim;
       double *otherResult = productMatrix + dim * otherRange[0];
       // printf("Getting result from process %d\n", i);
-      MPI_Recv(otherResult, otherResultSize, MPI_DOUBLE, i, RESULT_TAG, MPI_COMM_WORLD, &status);
+      // see http://www.mathcs.emory.edu/~cheung/Courses/561/Syllabus/92-MPI/async.html
+      MPI_Irecv(otherResult, otherResultSize, MPI_DOUBLE, i, RESULT_TAG, MPI_COMM_WORLD, &rq_matrix[i-1]);
       //printf("%lf\n", otherResult[0]);
 
     }
+    
+    for (i = 1; i < size; i++) {
+      // Sync all the receives
+      MPI_Wait( &rq_matrix[i-1], NULL );
+    }
+    
     if (print) {
       printm(matrix, dim);
       printf("\n\n became \n\n");

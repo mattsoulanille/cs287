@@ -1,6 +1,7 @@
 #include "mpi.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 
 #define MATRIX_TAG 1
 #define RANGE_TAG 2
@@ -112,13 +113,10 @@ int main(int argc, char *argv[]) {
   int h; // height
   int w; // width
   //printf("range: [%d, %d]\n", range[0], range[1]);    
+#pragma omp parallel for collapse(3) num_threads(4) shared(result)
   for (h = range[0]; h < range[1]; h++) {
-
     // iterate over columns
-    int dotResult = 0;
-
     for (w = 0; w < dim; w++) {
-
       // Dot Product
       for (i = 0; i < dim; i++) {
 	

@@ -67,17 +67,19 @@ int main(int argc, char *argv[]) {
   double *matrix;
   matrix = calloc(sizeof(double), dim*dim);
 
-  if (rank == 0) {
-    FILE *matrixFile;
-    matrixFile = fopen(argv[1], "r");
 
-    // read the matrix
-    readMatrix(matrixFile, matrix, dim);
-    // send the matrix to the others
-  }
+  FILE *matrixFile;
+  matrixFile = fopen(argv[1], "r");
+  
+  // read the matrix
+  // ASSUMES A DISTRIBUTED DATA SET. All nodes must have a copy of the matrix.
+  readMatrix(matrixFile, matrix, dim);
+  // send the matrix to the others
+
 
   // Distribute the matrix to everyone. Also receives.
-  MPI_Bcast(matrix, dim*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  // Replaced with distributed dataset.
+  //  MPI_Bcast(matrix, dim*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   // Split up problem
   int range[2];

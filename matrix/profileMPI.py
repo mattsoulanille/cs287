@@ -1,4 +1,6 @@
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from time import time
 import os
@@ -16,8 +18,8 @@ def profile(function, count):
 
 def profile_threads():
     size = 1000
-    threads = range(1,49)
-    #threads = range(1,8,2)
+    threads = range(1,48)
+    #threads = range(1,8,4)
     #threads = [1,2,3,4,5] # Core count to try
     trial_count = 4
     
@@ -33,15 +35,15 @@ def profile_threads():
     for c in threads:
         p.append( profile(test_parallel(c), trial_count) )
 
-    plt.xlabel("Number of Threads")
+    plt.xlabel("Number of Processes")
     plt.ylabel("Average Runtime (seconds) from " + str(trial_count) + " trials")
-    plt.xticks(threads)
+    #plt.xticks(threads)
     plt.plot(threads, p, 'g-', label='Parallel')
     plt.legend()
     plt.title("Execution Time for " + str(size) + " by " + str(size) + " Matrix")
 
     plt.savefig('profileMPI.png')
-    plt.show()
+#    plt.show()
 
 
 if __name__ == "__main__":

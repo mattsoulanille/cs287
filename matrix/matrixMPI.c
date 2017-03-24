@@ -24,7 +24,7 @@ void printm(double *matrix, int dim) {
 }
 
 
-int readMatrix(FILE *matrixFile, double *matrix, int dim) {
+int readMatrix(FILE *matrixFile, double *matrix, double *transpose, int dim) {
   char *line = NULL;
   size_t len = 0;
   ssize_t read = getline(&line, &len, matrixFile);
@@ -39,6 +39,7 @@ int readMatrix(FILE *matrixFile, double *matrix, int dim) {
       //fprintf(stderr, " %lf", entry);
       //matrix[y][x] = entry;
       *(matrix + y*dim + x) = entry;
+      *(transpose + x*dim + y) = entry;
     }
     read = getline(&line, &len, matrixFile);
   }
@@ -67,6 +68,9 @@ int main(int argc, char *argv[]) {
   
   double *matrix;
   matrix = calloc(sizeof(double), dim*dim);
+  // For some reason multiplication works faster if there is another matrix
+  // that is the transpose of the first one. Strange...
+  double *transpose = calloc(sizeof(double), dim*dim);
   double *productMatrix;
   MPI_Request rq_matrix[dim];
   if (rank == 0) {
@@ -79,7 +83,7 @@ int main(int argc, char *argv[]) {
   
   // read the matrix
   // ASSUMES A DISTRIBUTED DATA SET. All nodes must have a copy of the matrix.
-  readMatrix(matrixFile, matrix, dim);
+  readMatrix(matrixFile, matrix, transpose, dim);
   // send the matrix to the others
 
   // Split up problem
@@ -119,8 +123,8 @@ int main(int argc, char *argv[]) {
     for (w = 0; w < dim; w++) {
       // Dot Product
       for (i = 0; i < dim; i++) {
-	
-	*(result + dim * (h - range[0]) + w ) += *(matrix + dim * h + i) * *(matrix + dim * i + w);
+	// for some reason this works better if it has a transpose matrix
+	*(result + dim * (h - range[0]) + w ) += *(matrix + dim * h + i) * *(transpose + dim * w + i);
 	//printf("h: %d\tw: %d\ti: %d\n", h, w, i);
 	
       }

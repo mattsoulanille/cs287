@@ -67,6 +67,10 @@ int main(int argc, char *argv[]) {
   double *matrix;
   matrix = calloc(sizeof(double), dim*dim);
 
+  if (rank == 0) {
+    // final result matrix
+    double *productMatrix = calloc(sizeof(double), dim*dim);
+  }
 
   FILE *matrixFile;
   matrixFile = fopen(argv[1], "r");
@@ -75,11 +79,6 @@ int main(int argc, char *argv[]) {
   // ASSUMES A DISTRIBUTED DATA SET. All nodes must have a copy of the matrix.
   readMatrix(matrixFile, matrix, dim);
   // send the matrix to the others
-
-
-  // Distribute the matrix to everyone. Also receives.
-  // Replaced with distributed dataset.
-  //  MPI_Bcast(matrix, dim*dim, MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
   // Split up problem
   int range[2];
@@ -98,7 +97,14 @@ int main(int argc, char *argv[]) {
 
   // Allocate result buffer
   int resultSize = (range[1] - range[0]) * dim;
-  double *result = calloc(sizeof(double), resultSize);
+  if (rank == 0) {
+    // Put results directly into product matrix
+    double *result = productMatrix + dim * range[0];
+  }
+  else {
+    // put results into result buffer
+    double *result = calloc(sizeof(double), resultSize);
+  }
 
   // Iterate over the rows to dot by
   int h; // height
@@ -132,19 +138,7 @@ int main(int argc, char *argv[]) {
 
   // Receive calculated pieces from others
   if (rank == 0) {
-    // final result matrix
-    double *productMatrix = calloc(sizeof(double), dim*dim);
 
-
-    // Add this process(0)'s results to the matrix
-    for (h = range[0]; h < range[1]; h++) {
-      for (w = 0; w < dim; w++) {
-	*(productMatrix + h*dim + w) = *(result + (h - range[0])*dim + w);
-      }
-    }
-
-    
-    
     int otherRange[2];
     // Get results from all other processes
     for (i = 1; i < size; i++) {

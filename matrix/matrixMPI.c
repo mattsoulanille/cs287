@@ -66,10 +66,10 @@ int main(int argc, char *argv[]) {
   
   double *matrix;
   matrix = calloc(sizeof(double), dim*dim);
-
+  double *productMatrix;
   if (rank == 0) {
     // final result matrix
-    double *productMatrix = calloc(sizeof(double), dim*dim);
+    productMatrix = calloc(sizeof(double), dim*dim);
   }
 
   FILE *matrixFile;
@@ -97,13 +97,14 @@ int main(int argc, char *argv[]) {
 
   // Allocate result buffer
   int resultSize = (range[1] - range[0]) * dim;
+  double *result;
   if (rank == 0) {
     // Put results directly into product matrix
-    double *result = productMatrix + dim * range[0];
+    result = productMatrix + dim * range[0];
   }
   else {
     // put results into result buffer
-    double *result = calloc(sizeof(double), resultSize);
+   result = calloc(sizeof(double), resultSize);
   }
 
   // Iterate over the rows to dot by
@@ -146,21 +147,10 @@ int main(int argc, char *argv[]) {
       otherRange[0] = (size - i - 1) * blockSize;
       otherRange[1] = (size - i) * blockSize;
       int otherResultSize = (otherRange[1] - otherRange[0]) * dim;
-      double *otherResult = calloc(sizeof(double), otherResultSize);
+      double *otherResult = productMatrix + dim * otherRange[0];
       // printf("Getting result from process %d\n", i);
       MPI_Recv(otherResult, otherResultSize, MPI_DOUBLE, i, RESULT_TAG, MPI_COMM_WORLD, &status);
       //printf("%lf\n", otherResult[0]);
-
-
-      // add the other results to the final product
-      for (h = otherRange[0]; h < otherRange[1]; h++) {
-	//printf("range: [%d, %d]:\t", otherRange[0], otherRange[1]);
-	for (w = 0; w < dim; w++) {
-	  //printf("%lf\t", *(otherResult + (h - otherRange[0])*dim + w));
-	  *(productMatrix + h*dim + w) = *(otherResult + (h - otherRange[0])*dim + w);
-	}
-	//printf("\n");
-      }
 
     }
     if (print) {

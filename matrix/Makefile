@@ -13,7 +13,7 @@ matrix: $(OBJS)
 	$(CC) $(CFLAGS) $(OBJS) -o matrix
 
 matrixMPI: matrixMPI.o
-	mpicc $(CFLAGS) matrixMPI.o -o matrixMPI
+	mpicc $(CFLAGS) matrixModule.o matrixMPI.o -o matrixMPI
 
 matrixModule.o: matrixModule.c matrixModule.h
 	$(CC) $< -o $@ ${CFLAGS} -c

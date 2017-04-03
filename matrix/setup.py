@@ -1,6 +1,6 @@
 from distutils.core import setup, Extension
 import os
-os.environ["CC"] = "gcc-6"
+os.environ["CC"] = "gcc"
 
 setup(
     ext_modules=[Extension("_matrix",

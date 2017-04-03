@@ -29,8 +29,9 @@ def GenMatrix(N, filename):
         f.write("\n")
     f.close()
 
-
-GenMatrix(100, "Matrix2.txt")
-GenMatrix(1000, "Matrix3.txt")
-GenMatrix(10000, "Matrix4.txt")
+#GenMatrix(10, "Matrix1.txt")
+#GenMatrix(100, "Matrix2.txt")
+for i in range(500,5001,500):
+    GenMatrix(i, "Matrix"+str(i)+".txt")
+#GenMatrix(10000, "Matrix4.txt")
 #GenMatrix(100000, "Matrix5.txt")

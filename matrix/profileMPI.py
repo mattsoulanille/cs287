@@ -18,7 +18,7 @@ def profile(function, count):
 
 def profile_threads():
     size = 1000
-    threads = range(1,48)
+    threads = range(1,49)
     #threads = range(1,8,4)
     #threads = [1,2,3,4,5] # Core count to try
     trial_count = 4

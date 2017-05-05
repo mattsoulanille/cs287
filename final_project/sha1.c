@@ -4,12 +4,95 @@
     #include "CL/cl.h"
 #endif
 #include <stdio.h>
+#include <locale.h>
 #define BUFFER_SIZE (4096)
 // Sources:
 // 1: Guide for C++: https://anteru.net/blog/2012/11/03/2009/
 // 2: Guide for C: http://www.aronaldg.org/webfiles/compecon/src/opencl/doc/OpenCL_Mac_OS_X.pdf
 // 3: OpenCL reference: https://www.khronos.org/registry/OpenCL/specs/opencl-1.1.pdf
 // 4: example program: https://developer.apple.com/library/content/samplecode/OpenCL_Hello_World_Example/Listings/hello_c.html
+
+// Thank you: http://stackoverflow.com/questions/24326432/convenient-way-to-show-opencl-error-codes
+const char *getErrorString(cl_int error) {
+  switch(error) {
+    // run-time and JIT compiler errors
+    case 0: return "CL_SUCCESS";
+    case -1: return "CL_DEVICE_NOT_FOUND";
+    case -2: return "CL_DEVICE_NOT_AVAILABLE";
+    case -3: return "CL_COMPILER_NOT_AVAILABLE";
+    case -4: return "CL_MEM_OBJECT_ALLOCATION_FAILURE";
+    case -5: return "CL_OUT_OF_RESOURCES";
+    case -6: return "CL_OUT_OF_HOST_MEMORY";
+    case -7: return "CL_PROFILING_INFO_NOT_AVAILABLE";
+    case -8: return "CL_MEM_COPY_OVERLAP";
+    case -9: return "CL_IMAGE_FORMAT_MISMATCH";
+    case -10: return "CL_IMAGE_FORMAT_NOT_SUPPORTED";
+    case -11: return "CL_BUILD_PROGRAM_FAILURE";
+    case -12: return "CL_MAP_FAILURE";
+    case -13: return "CL_MISALIGNED_SUB_BUFFER_OFFSET";
+    case -14: return "CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST";
+    case -15: return "CL_COMPILE_PROGRAM_FAILURE";
+    case -16: return "CL_LINKER_NOT_AVAILABLE";
+    case -17: return "CL_LINK_PROGRAM_FAILURE";
+    case -18: return "CL_DEVICE_PARTITION_FAILED";
+    case -19: return "CL_KERNEL_ARG_INFO_NOT_AVAILABLE";
+
+    // compile-time errors
+    case -30: return "CL_INVALID_VALUE";
+    case -31: return "CL_INVALID_DEVICE_TYPE";
+    case -32: return "CL_INVALID_PLATFORM";
+    case -33: return "CL_INVALID_DEVICE";
+    case -34: return "CL_INVALID_CONTEXT";
+    case -35: return "CL_INVALID_QUEUE_PROPERTIES";
+    case -36: return "CL_INVALID_COMMAND_QUEUE";
+    case -37: return "CL_INVALID_HOST_PTR";
+    case -38: return "CL_INVALID_MEM_OBJECT";
+    case -39: return "CL_INVALID_IMAGE_FORMAT_DESCRIPTOR";
+    case -40: return "CL_INVALID_IMAGE_SIZE";
+    case -41: return "CL_INVALID_SAMPLER";
+    case -42: return "CL_INVALID_BINARY";
+    case -43: return "CL_INVALID_BUILD_OPTIONS";
+    case -44: return "CL_INVALID_PROGRAM";
+    case -45: return "CL_INVALID_PROGRAM_EXECUTABLE";
+    case -46: return "CL_INVALID_KERNEL_NAME";
+    case -47: return "CL_INVALID_KERNEL_DEFINITION";
+    case -48: return "CL_INVALID_KERNEL";
+    case -49: return "CL_INVALID_ARG_INDEX";
+    case -50: return "CL_INVALID_ARG_VALUE";
+    case -51: return "CL_INVALID_ARG_SIZE";
+    case -52: return "CL_INVALID_KERNEL_ARGS";
+    case -53: return "CL_INVALID_WORK_DIMENSION";
+    case -54: return "CL_INVALID_WORK_GROUP_SIZE";
+    case -55: return "CL_INVALID_WORK_ITEM_SIZE";
+    case -56: return "CL_INVALID_GLOBAL_OFFSET";
+    case -57: return "CL_INVALID_EVENT_WAIT_LIST";
+    case -58: return "CL_INVALID_EVENT";
+    case -59: return "CL_INVALID_OPERATION";
+    case -60: return "CL_INVALID_GL_OBJECT";
+    case -61: return "CL_INVALID_BUFFER_SIZE";
+    case -62: return "CL_INVALID_MIP_LEVEL";
+    case -63: return "CL_INVALID_GLOBAL_WORK_SIZE";
+    case -64: return "CL_INVALID_PROPERTY";
+    case -65: return "CL_INVALID_IMAGE_DESCRIPTOR";
+    case -66: return "CL_INVALID_COMPILER_OPTIONS";
+    case -67: return "CL_INVALID_LINKER_OPTIONS";
+    case -68: return "CL_INVALID_DEVICE_PARTITION_COUNT";
+
+    // extension errors
+    case -1000: return "CL_INVALID_GL_SHAREGROUP_REFERENCE_KHR";
+    case -1001: return "CL_PLATFORM_NOT_FOUND_KHR";
+    case -1002: return "CL_INVALID_D3D10_DEVICE_KHR";
+    case -1003: return "CL_INVALID_D3D10_RESOURCE_KHR";
+    case -1004: return "CL_D3D10_RESOURCE_ALREADY_ACQUIRED_KHR";
+    case -1005: return "CL_D3D10_RESOURCE_NOT_ACQUIRED_KHR";
+    default: return "Unknown OpenCL error";
+  }
+}
+
+
+
+
+
 
 int main(int argc, char **argv) {
   // memory to hold device id
@@ -63,7 +146,7 @@ int main(int argc, char **argv) {
 
 
   // http://stackoverflow.com/questions/29121443/read-opencl-kernel-from-seperate-file
-  FILE *fp = fopen("kernel.cl", "rb");
+  FILE *fp = fopen("sha1.cl", "rb");
   if (!fp) {
     printf("Failed to open kernel file\n");
     exit(1);
@@ -77,19 +160,6 @@ int main(int argc, char **argv) {
   fread(KernelSource, sizeof(char), source_size, fp);
   fclose(fp);
 
-  // Copied from 2
-  // OpenCL kernel that computes the square of an input array
-  /* const char *KernelSource = "\n"		\ */
-  /*   "__kernel void square( \n"			\ */
-  /*   " __global float* input, \n"		\ */
-  /*   " __global float* output, \n"		\ */
-  /*   " const unsigned int count) \n"		\ */
-  /*   "{ \n"					\ */
-  /*   " int i = get_global_id(0); \n"		\ */
-  /*   " if(i < count) \n"				\ */
-  /*   " output[i] = input[i] * input[i]; \n"	\ */
-  /*   "} \n"					\ */
-  /*   "\n"; */
   cl_program program = clCreateProgramWithSource (
 						  context, // a valid OpenCL context
 						  1, // the number of strings
@@ -109,7 +179,8 @@ int main(int argc, char **argv) {
 		       0, // number of devices in next parameter
 		       NULL, // device list; NULL for all devices
 		       //(const char*) &buildOptions, // a pointer to a string of build options
-		       NULL,
+		       //NULL,
+		       "-g",
 		       NULL, // a pointer to a notification callback function
 		       NULL // data to be passed as a parameter to the callback function
 		       );
@@ -140,7 +211,7 @@ int main(int argc, char **argv) {
 
 
   
-  const char* KernelName = "square";
+  const char* KernelName = "sha1_crypt_kernel";
   cl_kernel kernel = clCreateKernel(
 				    program, // program to run
 				    KernelName, // name of kernel
@@ -148,7 +219,7 @@ int main(int argc, char **argv) {
 				    );
 
   if (err != CL_SUCCESS) {
-    printf("Kernel faied\n");
+    printf("Couldn't create kernel object: Error %d\n", err);
     exit(1);
   }
 
@@ -166,60 +237,88 @@ int main(int argc, char **argv) {
   // with it since this problem doesn't require shared memory
 
 
-  cl_mem input = clCreateBuffer(
-				 context,
-				 CL_MEM_READ_ONLY,
-				 // memory flags: read only
-				 buffer_size,
-				 NULL, // don't initialize from host stuff
-				 &err // errors
-				 );
+  /* cl_mem input = clCreateBuffer( */
+  /* 				 context, */
+  /* 				 CL_MEM_READ_ONLY, */
+  /* 				 // memory flags: read only */
+  /* 				 buffer_size, */
+  /* 				 NULL, // don't initialize from host stuff */
+  /* 				 &err // errors */
+  /* 				 ); */
 
-  cl_mem output = clCreateBuffer(
-				 context,
-				 CL_MEM_WRITE_ONLY,
-				 // memory flags: Write only
-				 buffer_size,
-				 NULL, // don't initialize from host stuff
-				 &err // errors
-				 );
 
+  
+  // copy to device memory
+
+  // For sha1 kernel:
+  // sha1_crypt_kernel(__global uint *data_info, __global uchar *salt, __global char *plain_key,  __global uint *digest)
+  // data_info[0] is the size of the chunks of data in plain_key to process as plaintext to hash
+  // data_info[1] is (probably) the number of such chunks
+  int num_keys = 1;
+  const uint data_info[2] = {15, (uint) num_keys};
+  // salt is (probably) the salt. Should be 8 long?
+  //  char* salt_char =
+  size_t salt_size = sizeof(char) * 8;
+  unsigned char salt[] = "abcdefgh";
+  // plain_key is a string of keys which corresponds to data_info
+
+  char plain_key[] = "fifteencharslon";
+  size_t plain_key_size = sizeof(char) * 15;
+  // digest is a uint array of len 5 * number of keys
+  uint* digest = calloc(num_keys * 5, sizeof(uint));
+
+  cl_mem data_info_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint) * 2, NULL, &err);
+  cl_mem salt_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, salt_size, NULL, &err);
+  cl_mem plain_key_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, plain_key_size, NULL, &err);
+  cl_mem digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(uint) * 5 * num_keys, NULL, &err);
+
+  
   // from 4
-  if (!input || !output) {
+  if (!plain_key_buffer || !digest_buffer || !salt_buffer || !data_info_buffer) {
       printf("Error: Failed to allocate device memory!\n");
       exit(1);
   }
-  
-  // copy to device memory
+
+
   err = clEnqueueWriteBuffer(
 			     commands,
-			     input,
+			     plain_key_buffer,
 			     CL_TRUE, // blocking write
 			     0, // zero offset
-			     buffer_size,
-			     input_buffer, // host mem source of data
+			     plain_key_size,
+			     plain_key, // host mem source of data
 			     0, // vvv a bunch of event stuff that doesn't matter vvv
 			     NULL,
 			     NULL);
+  err |= clEnqueueWriteBuffer(commands, data_info_buffer, CL_TRUE, 0,
+			      sizeof(uint) * 2, data_info, 0, NULL, NULL);
+  err |= clEnqueueWriteBuffer(commands, salt_buffer, CL_TRUE, 0,
+			      salt_size, data_info, 0, NULL, NULL);
 
   if (err != CL_SUCCESS) {
-    printf("Couldn't copy host data to device\n");
+    printf("Couldn't copy host data to device: Error: %s\n", getErrorString(err));
     exit(1);
   }
 
+  
+
+  
   // From 4
+
+
   err = CL_SUCCESS;
   err |= clSetKernelArg(
    			kernel, // A kernel object
-			0, // argument index for kernel function
-			sizeof(cl_mem), // size of argument
-			&input); // Pointer to argument.
+  			0, // argument index for kernel function
+  			sizeof(cl_mem), // size of argument
+  			&data_info_buffer); // Pointer to argument.
 
-  err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &output);
-  err |= clSetKernelArg(kernel, 2, sizeof(unsigned int), &count);
+  err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &salt_buffer);
+  err |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &plain_key_buffer);
+  err |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &digest_buffer);
 
   if (err != CL_SUCCESS) {
-    printf("Error: Failed to set kernel arguments! %d\n", err);
+    printf("Error: Failed to set kernel arguments! %s\n", getErrorString(err));
     exit(1);
   }
   
@@ -238,6 +337,8 @@ int main(int argc, char **argv) {
   // Execute the kernel over the entire range of our 1d input data set
   // using the maximum number of work group items for this device
   // from 4
+
+  
   global = count;
   err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
   if (err) {
@@ -245,39 +346,48 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
   
+
+
   // Wait for the command commands to get serviced before reading back results
   //
   clFinish(commands);
   
   // Read back the results from the device to verify the output
   //
-  err = clEnqueueReadBuffer( commands, output, CL_TRUE, 0, sizeof(float) * count, output_buffer, 0, NULL, NULL );  
+
+
+  err = clEnqueueReadBuffer( commands, digest_buffer, CL_TRUE, 0, sizeof(uint) * 5 * num_keys, digest, 0, NULL, NULL );
+
   if (err != CL_SUCCESS) {
-    printf("Error: Failed to read output array! %d\n", err);
+    printf("Error: Failed to read output array! %s\n", getErrorString(err));
     exit(1);
   }
-  
+  printf("Output: %s\n", (char*) digest);
+
   // Validate our results
-  //
-  int correct = 0;
-  for(i = 0; i < count; i++) {
-    //    printf("%f ", output_buffer[i]);
-      if(output_buffer[i] == input_buffer[i] * input_buffer[i])
-	correct++;
-  }
+  /* // */
+  /* int correct = 0; */
+  /* for(i = 0; i < count; i++) { */
+  /*   //    printf("%f ", output_buffer[i]); */
+  /*     if(output_buffer[i] == input_buffer[i] * input_buffer[i]) */
+  /* 	correct++; */
+  /* } */
   
-  // Print a brief summary detailing the results
-  //
-  printf("Computed '%d/%d' correct values!\n", correct, count);
+  /* // Print a brief summary detailing the results */
+  /* // */
+  /* printf("Computed '%d/%d' correct values!\n", correct, count); */
   
   // Shutdown and cleanup
   //
-  clReleaseMemObject(input);
-  clReleaseMemObject(output);
+  clReleaseMemObject(plain_key_buffer);
+  clReleaseMemObject(digest_buffer);
+  clReleaseMemObject(salt_buffer);
+  clReleaseMemObject(data_info_buffer);
+
   clReleaseProgram(program);
   clReleaseKernel(kernel);
   clReleaseCommandQueue(commands);
   clReleaseContext(context);
-  
+  free(KernelSource);
   return 0;
 }

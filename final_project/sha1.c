@@ -232,49 +232,31 @@ int main(int argc, char **argv) {
   }
   float output_buffer[count];
 
-  //  int work_items = 10; // no limit to this. Set it to len of buffer
-  // work-group size is the size of the group of items to process. Probably set to null and let opencl deal
-  // with it since this problem doesn't require shared memory
 
+  int num_keys = 2048;
+  // data_info[0] is the number of keys to process and data_info[1] is the size of each key
+  const uint data_info[2] = {(uint) num_keys, 1};
 
-  /* cl_mem input = clCreateBuffer( */
-  /* 				 context, */
-  /* 				 CL_MEM_READ_ONLY, */
-  /* 				 // memory flags: read only */
-  /* 				 buffer_size, */
-  /* 				 NULL, // don't initialize from host stuff */
-  /* 				 &err // errors */
-  /* 				 ); */
-
-
-  
-  // copy to device memory
-
-  // For sha1 kernel:
-  // sha1_crypt_kernel(__global uint *data_info, __global uchar *salt, __global char *plain_key,  __global uint *digest)
-  // data_info[0] is the size of the chunks of data in plain_key to process as plaintext to hash
-  // data_info[1] is (probably) the number of such chunks
-  int num_keys = 1;
-  const uint data_info[2] = {15, (uint) num_keys};
-  // salt is (probably) the salt. Should be 8 long?
-  //  char* salt_char =
-  size_t salt_size = sizeof(char) * 8;
-  unsigned char salt[] = "abcdefgh";
   // plain_key is a string of keys which corresponds to data_info
-
-  char plain_key[] = "fifteencharslon";
-  size_t plain_key_size = sizeof(char) * 15;
+  unsigned char plain_key[data_info[0] * data_info[1]];
+  
+  for (i = 0; i < num_keys; i++) {
+    plain_key[i] = 'a';
+  }
+  
+  printf("Key: %c\n", plain_key[0]);
+  size_t plain_key_size = sizeof(char) * data_info[1];
   // digest is a uint array of len 5 * number of keys
-  uint* digest = calloc(num_keys * 5, sizeof(uint));
+  cl_uint* digest = calloc(num_keys * 5, sizeof(cl_uint));
 
   cl_mem data_info_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint) * 2, NULL, &err);
-  cl_mem salt_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, salt_size, NULL, &err);
+  //cl_mem salt_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, salt_size, NULL, &err);
   cl_mem plain_key_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, plain_key_size, NULL, &err);
-  cl_mem digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(uint) * 5 * num_keys, NULL, &err);
+  cl_mem digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(cl_uint) * 5 * num_keys, NULL, &err);
 
   
   // from 4
-  if (!plain_key_buffer || !digest_buffer || !salt_buffer || !data_info_buffer) {
+  if (!plain_key_buffer || !digest_buffer || !data_info_buffer) {
       printf("Error: Failed to allocate device memory!\n");
       exit(1);
   }
@@ -292,15 +274,13 @@ int main(int argc, char **argv) {
 			     NULL);
   err |= clEnqueueWriteBuffer(commands, data_info_buffer, CL_TRUE, 0,
 			      sizeof(uint) * 2, data_info, 0, NULL, NULL);
-  err |= clEnqueueWriteBuffer(commands, salt_buffer, CL_TRUE, 0,
-			      salt_size, data_info, 0, NULL, NULL);
+  /* err |= clEnqueueWriteBuffer(commands, salt_buffer, CL_TRUE, 0, */
+  /* 			      salt_size, data_info, 0, NULL, NULL); */
 
   if (err != CL_SUCCESS) {
     printf("Couldn't copy host data to device: Error: %s\n", getErrorString(err));
     exit(1);
   }
-
-  
 
   
   // From 4
@@ -313,9 +293,9 @@ int main(int argc, char **argv) {
   			sizeof(cl_mem), // size of argument
   			&data_info_buffer); // Pointer to argument.
 
-  err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &salt_buffer);
-  err |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &plain_key_buffer);
-  err |= clSetKernelArg(kernel, 3, sizeof(cl_mem), &digest_buffer);
+  //  err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &salt_buffer);
+  err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &plain_key_buffer);
+  err |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &digest_buffer);
 
   if (err != CL_SUCCESS) {
     printf("Error: Failed to set kernel arguments! %s\n", getErrorString(err));
@@ -339,7 +319,7 @@ int main(int argc, char **argv) {
   // from 4
 
   
-  global = count;
+  global = num_keys; // num_keys except its too small to run
   err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
   if (err) {
     printf("Error: Failed to execute kernel!\n");
@@ -356,13 +336,18 @@ int main(int argc, char **argv) {
   //
 
 
-  err = clEnqueueReadBuffer( commands, digest_buffer, CL_TRUE, 0, sizeof(uint) * 5 * num_keys, digest, 0, NULL, NULL );
+  err = clEnqueueReadBuffer( commands, digest_buffer, CL_TRUE, 0, sizeof(cl_uint) * 5 * num_keys, digest, 0, NULL, NULL );
 
   if (err != CL_SUCCESS) {
     printf("Error: Failed to read output array! %s\n", getErrorString(err));
     exit(1);
   }
-  printf("Output: %s\n", (char*) digest);
+
+  printf("Output: %08x%08x%08x%08x%08x\n", digest[0], digest[1], digest[2], digest[3], digest[4]);
+  
+  /* for (i = 0; i < 5; i++) { */
+  /*   printf("Output: %08x\n", digest[i]); */
+  /* } */
 
   // Validate our results
   /* // */
@@ -381,7 +366,7 @@ int main(int argc, char **argv) {
   //
   clReleaseMemObject(plain_key_buffer);
   clReleaseMemObject(digest_buffer);
-  clReleaseMemObject(salt_buffer);
+  //  clReleaseMemObject(salt_buffer);
   clReleaseMemObject(data_info_buffer);
 
   clReleaseProgram(program);

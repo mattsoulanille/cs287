@@ -62,8 +62,11 @@ __kernel void sha1_crypt_kernel(__global uint *data_info, __global uchar *plain_
 
 
   // copy the plain_key to the message:
-  for (i = 0; i < (int) data_info[1]; i++) {
 
+  for (i = 0; i < (int) data_info[1]; i++) {
+    /* if (gid == 0) { */
+    /*   printf("%c", plain_key[i + plain_key_start]); */
+    /* } */
     message[i/4] += plain_key[i + plain_key_start] << (8 * (3 - (i % 4)) );
   }
 

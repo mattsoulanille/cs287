@@ -90,15 +90,10 @@ const char *getErrorString(cl_int error) {
   }
 }
 
-
-
-// Returns true / false depending on whether a preimage was found
-int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, char* hash_preimage) {
+void build_kernel(cl_kernel *kernel, cl_context *context, cl_command_queue *commands, cl_program *program, cl_device_id* device_id) {
   
-  int i;
-  int j;
   // memory to hold device id
-  cl_device_id device_id;
+
   cl_uint numDevices = 1; // Doesn't work for more than one yet.
 
 
@@ -108,7 +103,7 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 			      NULL, // platform ID
 			      CL_DEVICE_TYPE_GPU, // look only for GPUs
 			      numDevices, // return an ID for only one GPU
-			      &device_id, // on return, the device ID
+			      device_id, // on return, the device ID
 			      NULL); // don't return the number of devices
 
   // make sure nothing went wrong
@@ -120,10 +115,10 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
 
   // Copied from 2 with changes
-  cl_context context = clCreateContext(
+  *context = clCreateContext(
 			     0, // a reserved variable
 			     numDevices, // the number of devices in the devices parameter
-			     &device_id, // a pointer to the list of device IDs from clGetDeviceIDs
+			     device_id, // a pointer to the list of device IDs from clGetDeviceIDs
 			     NULL, // a pointer to an error notice callback function (if any) for runtime errors
 			     NULL, // data to pass as a param to the callback function
 			     &err); // on return, points to a result code
@@ -136,11 +131,11 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
   
   // Copied from 2
   // The command queue for the first (and only) GPU
-  cl_command_queue commands = clCreateCommandQueue (
-					  context, // a valid OpenCL context
-					  device_id, // a device associated with the context
-					  0, // a bit field to specify properties [1]
-					  &err); // on return, points to a result code
+  *commands = clCreateCommandQueue (
+				    *context, // a valid OpenCL context
+				    *device_id, // a device associated with the context
+				    0, // a bit field to specify properties [1]
+				    &err); // on return, points to a result code
   if (err != CL_SUCCESS) {
     exit(1);
   }
@@ -162,13 +157,13 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
   fread(KernelSource, sizeof(char), source_size, kernel_file);
   fclose(kernel_file);
 
-  cl_program program = clCreateProgramWithSource (
-						  context, // a valid OpenCL context
-						  1, // the number of strings
-						  (const char**) &KernelSource, // an array of strings [1]
-						  NULL, // array of string lengths [2]
-						  &err // on return, points to a result code
-						  );
+  *program = clCreateProgramWithSource (
+					*context, // a valid OpenCL context
+					1, // the number of strings
+					(const char**) &KernelSource, // an array of strings [1]
+					NULL, // array of string lengths [2]
+					&err // on return, points to a result code
+					);
   
   if (err != CL_SUCCESS) {
     printf("Error: Failed to create program\n");
@@ -177,7 +172,7 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
   // Copied from 2
   err = clBuildProgram(
-		       program, // a valid program object
+		       *program, // a valid program object
 		       0, // number of devices in next parameter
 		       NULL, // device list; NULL for all devices
 		       //(const char*) &buildOptions, // a pointer to a string of build options
@@ -195,8 +190,8 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
     
     // get the details on the error, and store it in buffer
     clGetProgramBuildInfo(
-			  program, // the program object being queried
-			  device_id, // the device for which the OpenCL code was built
+			  *program, // the program object being queried
+			  *device_id, // the device for which the OpenCL code was built
 			  CL_PROGRAM_BUILD_LOG, // specifies that we want the build log
 			  sizeof(buffer), // the size of the buffer
 			  buffer, // on return, holds the build log
@@ -209,16 +204,14 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
     
   }
 
-  
-
-
+  free(KernelSource);
   
   const char* KernelName = "sha1_crypt_kernel";
-  cl_kernel kernel = clCreateKernel(
-				    program, // program to run
-				    KernelName, // name of kernel
-				    &err // error code
-				    );
+  *kernel = clCreateKernel(
+			   *program, // program to run
+			   KernelName, // name of kernel
+			   &err // error code
+			   );
 
   if (err != CL_SUCCESS) {
     printf("Couldn't create kernel object: Error %d\n", err);
@@ -226,14 +219,23 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
   }
 
 
+
+}
+
+
+// Returns true / false depending on whether a preimage was found
+int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, char* hash_preimage, cl_kernel *kernel, cl_context *context, cl_command_queue *commands, cl_device_id *device_id) {
+
+  cl_int err;
+  
   size_t plain_key_size = sizeof(char) * data_info[1] * data_info[0];
   // digest is a uint array of len 5 * number of keys
   cl_uint* digest = calloc(data_info[0] * 5, sizeof(cl_uint));
 
-  cl_mem data_info_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint) * 2, NULL, &err);
+  cl_mem data_info_buffer = clCreateBuffer(*context, CL_MEM_READ_ONLY, sizeof(uint) * 2, NULL, &err);
   //cl_mem salt_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, salt_size, NULL, &err);
-  cl_mem plain_key_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, plain_key_size, NULL, &err);
-  cl_mem digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(cl_uint) * 5 * data_info[0], NULL, &err);
+  cl_mem plain_key_buffer = clCreateBuffer(*context, CL_MEM_READ_ONLY, plain_key_size, NULL, &err);
+  cl_mem digest_buffer = clCreateBuffer(*context, CL_MEM_READ_WRITE, sizeof(cl_uint) * 5 * data_info[0], NULL, &err);
 
   
   // from 4
@@ -244,7 +246,7 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
 
   err = clEnqueueWriteBuffer(
-			     commands,
+			     *commands,
 			     plain_key_buffer,
 			     CL_TRUE, // blocking write
 			     0, // zero offset
@@ -253,7 +255,7 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 			     0, // vvv a bunch of event stuff that doesn't matter vvv
 			     NULL,
 			     NULL);
-  err |= clEnqueueWriteBuffer(commands, data_info_buffer, CL_TRUE, 0,
+  err |= clEnqueueWriteBuffer(*commands, data_info_buffer, CL_TRUE, 0,
 			      sizeof(uint) * 2, data_info, 0, NULL, NULL);
   /* err |= clEnqueueWriteBuffer(commands, salt_buffer, CL_TRUE, 0, */
   /* 			      salt_size, data_info, 0, NULL, NULL); */
@@ -269,14 +271,14 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
   err = CL_SUCCESS;
   err |= clSetKernelArg(
-   			kernel, // A kernel object
+   			*kernel, // A kernel object
   			0, // argument index for kernel function
   			sizeof(cl_mem), // size of argument
   			&data_info_buffer); // Pointer to argument.
 
   //  err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &salt_buffer);
-  err |= clSetKernelArg(kernel, 1, sizeof(cl_mem), &plain_key_buffer);
-  err |= clSetKernelArg(kernel, 2, sizeof(cl_mem), &digest_buffer);
+  err |= clSetKernelArg(*kernel, 1, sizeof(cl_mem), &plain_key_buffer);
+  err |= clSetKernelArg(*kernel, 2, sizeof(cl_mem), &digest_buffer);
 
   if (err != CL_SUCCESS) {
     printf("Error: Failed to set kernel arguments! %s\n", getErrorString(err));
@@ -287,7 +289,7 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
   // from 4
   size_t local; // local domain size
   size_t global; // global domain size
-  err = clGetKernelWorkGroupInfo(kernel, device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
+  err = clGetKernelWorkGroupInfo(*kernel, *device_id, CL_KERNEL_WORK_GROUP_SIZE, sizeof(local), &local, NULL);
   if (err != CL_SUCCESS) {
     printf("Error: Failed to retrieve kernel work group info! %d\n", err);
     exit(1);
@@ -301,7 +303,7 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
   
   global = data_info[0]; 
-  err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
+  err = clEnqueueNDRangeKernel(*commands, *kernel, 1, NULL, &global, &local, 0, NULL, NULL);
   if (err) {
     printf("Error: Failed to execute kernel!\n");
     exit(1);
@@ -311,11 +313,11 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
   // Wait for the command commands to get serviced before reading back results
   //
-  clFinish(commands);
+  clFinish(*commands);
   
   // Read back the results from the device to verify the output
   //
-  err = clEnqueueReadBuffer( commands, digest_buffer, CL_TRUE, 0, sizeof(cl_uint) * 5 * data_info[0], digest, 0, NULL, NULL );
+  err = clEnqueueReadBuffer( *commands, digest_buffer, CL_TRUE, 0, sizeof(cl_uint) * 5 * data_info[0], digest, 0, NULL, NULL );
 
   if (err != CL_SUCCESS) {
     printf("Error: Failed to read output array! %s\n", getErrorString(err));
@@ -327,10 +329,12 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
 
   //  printf("data_info[0]: %u\n", data_info[0]);
+  int i;
+  int j;
   for (i = 0; i < data_info[0]; i++) {
     sprintf(current_hash, "%08x%08x%08x%08x%08x", digest[5*i], digest[5*i + 1], digest[5*i + 2], digest[5*i + 3], digest[5*i + 4]);
     
-    //    printf("current hash: %s\t", current_hash);
+    //printf("current hash: %s\t", current_hash);
     
     if (strcmp(current_hash, hash) == 0) {
       for (j = 0; j < data_info[1]; j++) {
@@ -348,7 +352,6 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
 
   }
-  return false;
   
   //  printf("Output: %08x%08x%08x%08x%08x\n", digest[0], digest[1], digest[2], digest[3], digest[4]);
 
@@ -359,15 +362,18 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
   //
   clReleaseMemObject(plain_key_buffer);
   clReleaseMemObject(digest_buffer);
-  //  clReleaseMemObject(salt_buffer);
   clReleaseMemObject(data_info_buffer);
 
-  clReleaseProgram(program);
-  clReleaseKernel(kernel);
-  clReleaseCommandQueue(commands);
-  clReleaseContext(context);
-  free(KernelSource);
   return false;
+}
+
+void cleanup(char **line, FILE *fp, cl_program *program, cl_kernel *kernel, cl_command_queue *commands, cl_context *context) {
+  free(*line);
+  fclose(fp);
+  clReleaseProgram(*program);
+  clReleaseKernel(*kernel);
+  clReleaseCommandQueue(*commands);
+  clReleaseContext(*context);
 }
 
 
@@ -380,6 +386,14 @@ int main(int argc, char **argv) {
 
   FILE *fp = fopen(argv[1], "r");
 
+
+  cl_kernel kernel;
+  cl_context context;
+  cl_command_queue commands;
+  cl_program program;
+  cl_device_id device_id;
+  build_kernel(&kernel, &context, &commands, &program, &device_id);
+
   if (!fp) {
     printf("Failed to open file %s\n", argv[1]);
     exit(1);
@@ -388,7 +402,7 @@ int main(int argc, char **argv) {
   
   char* hash = argv[2];
 
-  int num_keys = pow(2, 20);
+  int num_keys = pow(2, 8);
   // data_info[0] is the number of keys to process and data_info[1] is the size of each key
   const uint data_info[2] = {(uint) num_keys, 4};
 
@@ -422,8 +436,9 @@ int main(int argc, char **argv) {
     i += data_info[1];
     if ((i + data_info[1]) > data_info[0]) {
       
-      if (find_sha1(plain_key, data_info, hash, hash_preimage)) {
+      if (find_sha1(plain_key, data_info, hash, hash_preimage, &kernel, &context, &commands, &device_id)) {
 	printf("sha1 inverse found: %s\n", hash_preimage);
+	cleanup(&line, fp, &program, &kernel, &commands, &context);
 	exit(0);
       }
       i = 0;
@@ -432,15 +447,15 @@ int main(int argc, char **argv) {
     bytes_read = getline(&line, &len, fp);
   }
 
-  if (find_sha1(plain_key, data_info, hash, hash_preimage)) {
+  // Try the last batch: incompletely filled.
+  if (find_sha1(plain_key, data_info, hash, hash_preimage, &kernel, &context, &commands, &device_id)) {
     printf("sha1 inverse found: %s\n", hash_preimage);
-    exit(0);
   }
-  
+  else {
+    printf("sha1 inverse not found\n");
+  }
 
-  free(line);
-  fclose(fp);
-  printf("sha1 inverse not found\n");
+  cleanup(&line, fp, &program, &kernel, &commands, &context);
   exit(0);
 }
 

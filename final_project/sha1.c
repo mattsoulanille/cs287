@@ -5,7 +5,8 @@
 #endif
 #include <stdio.h>
 #include <locale.h>
-#define BUFFER_SIZE (4096)
+#include <math.h>
+#include <string.h>
 // Sources:
 // 1: Guide for C++: https://anteru.net/blog/2012/11/03/2009/
 // 2: Guide for C: http://www.aronaldg.org/webfiles/compecon/src/opencl/doc/OpenCL_Mac_OS_X.pdf
@@ -91,10 +92,11 @@ const char *getErrorString(cl_int error) {
 
 
 
-
-
-
-int main(int argc, char **argv) {
+// Returns true / false depending on whether a preimage was found
+int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, char* hash_preimage) {
+  
+  int i;
+  int j;
   // memory to hold device id
   cl_device_id device_id;
   cl_uint numDevices = 1; // Doesn't work for more than one yet.
@@ -146,19 +148,19 @@ int main(int argc, char **argv) {
 
 
   // http://stackoverflow.com/questions/29121443/read-opencl-kernel-from-seperate-file
-  FILE *fp = fopen("sha1.cl", "rb");
-  if (!fp) {
+  FILE *kernel_file = fopen("sha1.cl", "rb");
+  if (!kernel_file) {
     printf("Failed to open kernel file\n");
     exit(1);
   }
   
-  fseek(fp, 0, SEEK_END);
-  size_t source_size = ftell(fp);
-  rewind(fp);
+  fseek(kernel_file, 0, SEEK_END);
+  size_t source_size = ftell(kernel_file);
+  rewind(kernel_file);
   char *KernelSource = (char*)malloc(source_size + 1);
   KernelSource[source_size] = '\0';
-  fread(KernelSource, sizeof(char), source_size, fp);
-  fclose(fp);
+  fread(KernelSource, sizeof(char), source_size, kernel_file);
+  fclose(kernel_file);
 
   cl_program program = clCreateProgramWithSource (
 						  context, // a valid OpenCL context
@@ -223,36 +225,15 @@ int main(int argc, char **argv) {
     exit(1);
   }
 
-  const unsigned int count = BUFFER_SIZE;
-  const size_t buffer_size = sizeof(float) * count;
-  float input_buffer[count];
-  int i;
-  for (i = 0; i < count; i++) {
-    input_buffer[i] = rand() / (float)RAND_MAX;
-  }
-  float output_buffer[count];
 
-
-  int num_keys = 2048;
-  // data_info[0] is the number of keys to process and data_info[1] is the size of each key
-  const uint data_info[2] = {(uint) num_keys, 1};
-
-  // plain_key is a string of keys which corresponds to data_info
-  unsigned char plain_key[data_info[0] * data_info[1]];
-  
-  for (i = 0; i < num_keys; i++) {
-    plain_key[i] = 'a';
-  }
-  
-  printf("Key: %c\n", plain_key[0]);
-  size_t plain_key_size = sizeof(char) * data_info[1];
+  size_t plain_key_size = sizeof(char) * data_info[1] * data_info[0];
   // digest is a uint array of len 5 * number of keys
-  cl_uint* digest = calloc(num_keys * 5, sizeof(cl_uint));
+  cl_uint* digest = calloc(data_info[0] * 5, sizeof(cl_uint));
 
   cl_mem data_info_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint) * 2, NULL, &err);
   //cl_mem salt_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, salt_size, NULL, &err);
   cl_mem plain_key_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, plain_key_size, NULL, &err);
-  cl_mem digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(cl_uint) * 5 * num_keys, NULL, &err);
+  cl_mem digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(cl_uint) * 5 * data_info[0], NULL, &err);
 
   
   // from 4
@@ -319,11 +300,11 @@ int main(int argc, char **argv) {
   // from 4
 
   
-  global = num_keys; // num_keys except its too small to run
+  global = data_info[0]; 
   err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
   if (err) {
     printf("Error: Failed to execute kernel!\n");
-    return EXIT_FAILURE;
+    exit(1);
   }
   
 
@@ -334,33 +315,45 @@ int main(int argc, char **argv) {
   
   // Read back the results from the device to verify the output
   //
-
-
-  err = clEnqueueReadBuffer( commands, digest_buffer, CL_TRUE, 0, sizeof(cl_uint) * 5 * num_keys, digest, 0, NULL, NULL );
+  err = clEnqueueReadBuffer( commands, digest_buffer, CL_TRUE, 0, sizeof(cl_uint) * 5 * data_info[0], digest, 0, NULL, NULL );
 
   if (err != CL_SUCCESS) {
     printf("Error: Failed to read output array! %s\n", getErrorString(err));
     exit(1);
   }
 
-  printf("Output: %08x%08x%08x%08x%08x\n", digest[0], digest[1], digest[2], digest[3], digest[4]);
-  
-  /* for (i = 0; i < 5; i++) { */
-  /*   printf("Output: %08x\n", digest[i]); */
-  /* } */
+  char current_hash[41];
+  memset(current_hash, 0, sizeof(current_hash));
 
-  // Validate our results
-  /* // */
-  /* int correct = 0; */
-  /* for(i = 0; i < count; i++) { */
-  /*   //    printf("%f ", output_buffer[i]); */
-  /*     if(output_buffer[i] == input_buffer[i] * input_buffer[i]) */
-  /* 	correct++; */
-  /* } */
+
+  //  printf("data_info[0]: %u\n", data_info[0]);
+  for (i = 0; i < data_info[0]; i++) {
+    sprintf(current_hash, "%08x%08x%08x%08x%08x", digest[5*i], digest[5*i + 1], digest[5*i + 2], digest[5*i + 3], digest[5*i + 4]);
+    
+    //    printf("current hash: %s\t", current_hash);
+    
+    if (strcmp(current_hash, hash) == 0) {
+      for (j = 0; j < data_info[1]; j++) {
+	hash_preimage[j] = (char) plain_key[i * data_info[1] + j];
+      }
+      return true;
+    }
+
+    //debug
+    for (j = 0; j < data_info[1]; j++) {
+      hash_preimage[j] = (char) plain_key[i * data_info[1] + j];
+    }
+    //printf("Preimage: %s\n", hash_preimage);
+
+
+
+  }
+  return false;
   
-  /* // Print a brief summary detailing the results */
-  /* // */
-  /* printf("Computed '%d/%d' correct values!\n", correct, count); */
+  //  printf("Output: %08x%08x%08x%08x%08x\n", digest[0], digest[1], digest[2], digest[3], digest[4]);
+
+
+  
   
   // Shutdown and cleanup
   //
@@ -374,5 +367,80 @@ int main(int argc, char **argv) {
   clReleaseCommandQueue(commands);
   clReleaseContext(context);
   free(KernelSource);
-  return 0;
+  return false;
 }
+
+
+
+int main(int argc, char **argv) {
+  if (argc != 3) {
+    printf("Usage: sha1 (file of keys) (hash)\n");
+    exit(1);
+  }
+
+  FILE *fp = fopen(argv[1], "r");
+
+  if (!fp) {
+    printf("Failed to open file %s\n", argv[1]);
+    exit(1);
+  }
+
+  
+  char* hash = argv[2];
+
+  int num_keys = pow(2, 20);
+  // data_info[0] is the number of keys to process and data_info[1] is the size of each key
+  const uint data_info[2] = {(uint) num_keys, 4};
+
+  // plain_key is a string of keys which corresponds to data_info
+  unsigned char plain_key[data_info[0] * data_info[1]];
+  memset(plain_key, 0, sizeof(plain_key)); // zeroes the entries
+
+  int i = 0;
+  int j = 0;
+  uint nextchar;
+  char* line = (char *) calloc(data_info[1] + 1, sizeof(char));
+  size_t len = data_info[1] * sizeof(char);
+  int bytes_read;
+
+  char hash_preimage[data_info[1] + 1]; // + null terminator
+  memset(hash_preimage, 0, sizeof(hash_preimage));
+  
+  bytes_read = getline(&line, &len, fp);
+  while (bytes_read > 0) {
+    if (line[bytes_read - 1] == '\n') {
+      line[(bytes_read - 1)] = '\0';
+      bytes_read --;
+      //printf("Removing newline. Bytes_Read is %d\n", bytes_read);
+    }
+    //printf("%s\n", line);
+    for (j = 0; j < bytes_read; j++) {
+      plain_key[i + j] = (unsigned char) line[j];
+      //      printf("%c\n", plain_key[i + j]);
+    }
+
+    i += data_info[1];
+    if ((i + data_info[1]) > data_info[0]) {
+      
+      if (find_sha1(plain_key, data_info, hash, hash_preimage)) {
+	printf("sha1 inverse found: %s\n", hash_preimage);
+	exit(0);
+      }
+      i = 0;
+    }
+    //printf("%d\n", bytes_read);
+    bytes_read = getline(&line, &len, fp);
+  }
+
+  if (find_sha1(plain_key, data_info, hash, hash_preimage)) {
+    printf("sha1 inverse found: %s\n", hash_preimage);
+    exit(0);
+  }
+  
+
+  free(line);
+  fclose(fp);
+  printf("sha1 inverse not found\n");
+  exit(0);
+}
+

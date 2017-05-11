@@ -1,3 +1,4 @@
+from __future__ import print_function
 from bitstring import BitArray, BitStream
 import pdb
 
@@ -34,8 +35,10 @@ def sha1(message):
     ba.append(size)
     assert(len(ba) == 512)
 
+    
     w = [BitArray('0x00000000') for x in range(80)]
 
+    
     
     for i in range(16):
         w[i] = ba[32 * i:32 * (i + 1)]
@@ -45,7 +48,17 @@ def sha1(message):
     for i in range(16,80):
         w[i] = (w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16])
         w[i].rol(1)
-    
+
+
+    # debugging
+    # for x in range(len(w)):
+    #     if (x+1) % 4:
+    #         print(w[x].hex, end=' ')            
+    #     else:
+    #         print(w[x].hex)
+    # print('\n')
+
+        
     a = BitArray(h0)
     b = BitArray(h1)
     c = BitArray(h2)
@@ -58,6 +71,7 @@ def sha1(message):
             k = BitArray('0x5A827999')
         elif 20 <= i <= 39:
             f = b ^ c ^ d
+            print(f.hex)
             k = BitArray('0x6ED9EBA1')
         elif 40 <= i <= 59:
             f = (b & c) | (b & d) | (c & d)
@@ -81,12 +95,17 @@ def sha1(message):
         a = temp
 
 
+#        print(a.hex + ' ' + b.hex + ' ' + c.hex + ' ' + d.hex + ' ' + e.hex)
+#    print()
+
     h0 = bit_add32(h0, a)
     h1 = bit_add32(h1, b)
     h2 = bit_add32(h2, c)
     h3 = bit_add32(h3, d)
     h4 = bit_add32(h4, e)
 
+
+    
     #pdb.set_trace()
     
     hh = str(h0)[2:] + str(h1)[2:] + str(h2)[2:] + str(h3)[2:] + str(h4)[2:]
@@ -100,4 +119,4 @@ if __name__ == "__main__":
     parser.add_argument('operand', help='string to calculate sha1 of', type=str, default='', nargs='?')
     args = parser.parse_args()
     
-    print sha1(args.operand)
+    print(sha1(args.operand))

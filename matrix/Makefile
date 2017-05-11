@@ -2,7 +2,7 @@ SHELL=/bin/sh
 
 .SUFFIXES:
 .SUFFIXES: .c
-CC = gcc
+CC = gcc-6
 CFLAGS = -g -fopenmp -lm
 OBJS = matrixModule.o matrix.o
 

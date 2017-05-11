@@ -1,5 +1,5 @@
 CC=gcc
-FLAGS = -framework OpenCL
+FLAGS = -framework OpenCL -g
 
 all: sha1
 

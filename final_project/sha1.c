@@ -230,7 +230,9 @@ void build_kernel() {
 }
 
 
-
+cl_mem data_info_buffer;
+cl_mem plain_key_buffer;
+cl_mem digest_buffer;
 
 
 // Returns true / false depending on whether a preimage was found
@@ -242,17 +244,9 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
   // digest is a uint array of len 5 * number of keys
   cl_uint* digest = calloc(data_info[0] * 5, sizeof(cl_uint));
 
-  cl_mem data_info_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint) * 2, NULL, &err);
-  //cl_mem salt_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, salt_size, NULL, &err);
-  cl_mem plain_key_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, plain_key_size, NULL, &err);
-  cl_mem digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(cl_uint) * 5 * data_info[0], NULL, &err);
 
   
-  // from 4
-  if (!plain_key_buffer || !digest_buffer || !data_info_buffer) {
-      printf("Error: Failed to allocate device memory!\n");
-      exit(1);
-  }
+
 
 
   err = clEnqueueWriteBuffer(
@@ -368,11 +362,7 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 
   
   
-  // Shutdown and cleanup
-  //
-  clReleaseMemObject(plain_key_buffer);
-  clReleaseMemObject(digest_buffer);
-  clReleaseMemObject(data_info_buffer);
+
 
   return false;
 }
@@ -384,6 +374,10 @@ void cleanup(char **line, FILE *fp) {
   clReleaseKernel(kernel);
   clReleaseCommandQueue(commands);
   clReleaseContext(context);
+  clReleaseMemObject(plain_key_buffer);
+  clReleaseMemObject(digest_buffer);
+  clReleaseMemObject(data_info_buffer);
+
 }
 
 
@@ -396,8 +390,28 @@ int main(int argc, char **argv) {
 
   FILE *fp = fopen(argv[1], "r");
 
+  char* hash = argv[2];
+  int num_keys = pow(2, 18);
+  // data_info[0] is the number of keys to process and data_info[1] is the size of each key
+  const uint data_info[2] = {(uint) num_keys, 20};
+
 
   build_kernel();
+
+  size_t plain_key_size = sizeof(char) * data_info[1] * data_info[0];
+  cl_int err;
+  data_info_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint) * 2, NULL, &err);
+  plain_key_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, plain_key_size, NULL, &err);
+  digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(cl_uint) * 5 * data_info[0], NULL, &err);
+
+
+  // from 4
+  if (!plain_key_buffer || !digest_buffer || !data_info_buffer) {
+      printf("Error: Failed to allocate device memory!\n");
+      exit(1);
+  }
+
+
 
   if (!fp) {
     printf("Failed to open file %s\n", argv[1]);
@@ -405,11 +419,6 @@ int main(int argc, char **argv) {
   }
 
   
-  char* hash = argv[2];
-
-  int num_keys = pow(2, 8);
-  // data_info[0] is the number of keys to process and data_info[1] is the size of each key
-  const uint data_info[2] = {(uint) num_keys, 4};
 
   // plain_key is a string of keys which corresponds to data_info
   unsigned char plain_key[data_info[0] * data_info[1]];

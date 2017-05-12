@@ -215,12 +215,20 @@ __kernel void sha1_crypt_kernel(__global uint *data_info, __global uchar *plain_
   }
   */
 
+
   digest[0 + 5*gid] = h0;
   digest[1 + 5*gid] = h1;
   digest[2 + 5*gid] = h2;
   digest[3 + 5*gid] = h3;
   digest[4 + 5*gid] = h4;
 
+  /*
+  digest[gid] = h0;
+  digest[gid + 1*data_info[0]] = h1;
+  digest[gid + 2*data_info[0]] = h2;
+  digest[gid + 3*data_info[0]] = h3;
+  digest[gid + 4*data_info[0]] = h4;
+  */
   return;
 }
 

@@ -300,12 +300,9 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
   }
   
 
-
   // Execute the kernel over the entire range of our 1d input data set
   // using the maximum number of work group items for this device
   // from 4
-
-  
   global = data_info[0]; 
   err = clEnqueueNDRangeKernel(commands, kernel, 1, NULL, &global, &local, 0, NULL, NULL);
   if (err) {
@@ -393,7 +390,7 @@ int main(int argc, char **argv) {
   char* hash = argv[2];
   int num_keys = pow(2, 18);
   // data_info[0] is the number of keys to process and data_info[1] is the size of each key
-  const uint data_info[2] = {(uint) num_keys, 20};
+  const uint data_info[2] = {(uint) num_keys, 16};
 
 
   build_kernel();
@@ -435,7 +432,9 @@ int main(int argc, char **argv) {
   memset(hash_preimage, 0, sizeof(hash_preimage));
   
   bytes_read = getline(&line, &len, fp);
+
   while (bytes_read > 0) {
+
     if (line[bytes_read - 1] == '\n') {
       line[(bytes_read - 1)] = '\0';
       bytes_read --;
@@ -455,6 +454,7 @@ int main(int argc, char **argv) {
 	cleanup(&line, fp);
 	exit(0);
       }
+      memset(plain_key, 0, sizeof(plain_key));
       i = 0;
     }
     //printf("%d\n", bytes_read);

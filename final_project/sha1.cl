@@ -32,15 +32,30 @@ static uint leftrotate(uint value, uint count) {
 }
 
 
+static uint strlen(__global uchar *str) {
+
+  uint i = 0;
+  while (str[i] != '\0') {
+    i ++;
+  }
+
+  return i;
+
+}
 
 
 // see https://en.wikipedia.org/wiki/SHA-1
 __kernel void sha1_crypt_kernel(__global uint *data_info, __global uchar *plain_key, __global uint *digest) {
   int gid = get_global_id(0);
 
+  int plain_key_start = gid * ((int) data_info[1]); // start of a given key
   uint tmp;
   //uint num_keys = data_info[0];
-  uint ml = data_info[1] * sizeof(uchar) * 8; // message length in bits
+  uint real_len = min(strlen(&plain_key[plain_key_start]), data_info[1]);
+  /* if (gid == 0) { */
+  /*   printf("%d\n", real_len); */
+  /* } */
+  uint ml = real_len * sizeof(uchar) * 8; // message length in bits
 
   
   int i;
@@ -53,7 +68,7 @@ __kernel void sha1_crypt_kernel(__global uint *data_info, __global uchar *plain_
 
 
   
-  int plain_key_start = gid * ((int) data_info[1]); // start of a given key
+
   //unsigned char char_message[64]; // assumes message is smaller than 448 bits
   memset(&message, 0, sizeof(message)); // zeroes the entries
 
@@ -63,7 +78,7 @@ __kernel void sha1_crypt_kernel(__global uint *data_info, __global uchar *plain_
 
   // copy the plain_key to the message:
 
-  for (i = 0; i < (int) data_info[1]; i++) {
+  for (i = 0; i < (int) real_len; i++) {
     /* if (gid == 0) { */
     /*   printf("%c", plain_key[i + plain_key_start]); */
     /* } */
@@ -74,7 +89,7 @@ __kernel void sha1_crypt_kernel(__global uint *data_info, __global uchar *plain_
   //printf("\t %d\n", gid);
   
   // append the bit 1 to the message
-  i = (int) data_info[1];
+  i = (int) real_len;
   message[i/4] += 0x80 << (8 * (3 - (i % 4)) );
   
   // set the last bits as the message length as a 64 bit big endian integer (unsigned????)

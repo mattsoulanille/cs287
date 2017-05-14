@@ -7,6 +7,8 @@
 #include <locale.h>
 #include <math.h>
 #include <string.h>
+#include <stdint.h>
+
 // Sources:
 // 1: Guide for C++: https://anteru.net/blog/2012/11/03/2009/
 // 2: Guide for C: http://www.aronaldg.org/webfiles/compecon/src/opencl/doc/OpenCL_Mac_OS_X.pdf
@@ -236,7 +238,7 @@ cl_mem digest_buffer;
 
 
 // Returns true / false depending on whether a preimage was found
-int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, char* hash_preimage) {
+int find_sha1(unsigned char* plain_key, const uint32_t data_info[2], uint32_t* hash, char* hash_preimage) {
 
   cl_int err;
   
@@ -260,7 +262,7 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
 			     NULL,
 			     NULL);
   err |= clEnqueueWriteBuffer(commands, data_info_buffer, CL_TRUE, 0,
-			      sizeof(uint) * 2, data_info, 0, NULL, NULL);
+			      sizeof(uint32_t) * 2, data_info, 0, NULL, NULL);
   /* err |= clEnqueueWriteBuffer(commands, salt_buffer, CL_TRUE, 0, */
   /* 			      salt_size, data_info, 0, NULL, NULL); */
 
@@ -325,19 +327,18 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
     exit(1);
   }
 
-  char current_hash[41];
-  memset(current_hash, 0, sizeof(current_hash));
-
-
   //  printf("data_info[0]: %u\n", data_info[0]);
   int i;
   int j;
+
   for (i = 0; i < data_info[0]; i++) {
-    sprintf(current_hash, "%08x%08x%08x%08x%08x", digest[5*i], digest[5*i + 1], digest[5*i + 2], digest[5*i + 3], digest[5*i + 4]);
+
+    if ( (hash[0] == digest[5*i]) &&
+	 (hash[1] == digest[5*i + 1]) &&
+	 (hash[2] == digest[5*i + 2]) &&
+	 (hash[3] == digest[5*i + 3]) &&
+	 (hash[4] == digest[5*i + 4]) ) {
     
-    //printf("current hash: %s\t", current_hash);
-    
-    if (strcmp(current_hash, hash) == 0) {
       for (j = 0; j < data_info[1]; j++) {
 	hash_preimage[j] = (char) plain_key[i * data_info[1] + j];
       }
@@ -345,21 +346,15 @@ int find_sha1(unsigned char* plain_key, const uint data_info[2], char* hash, cha
     }
 
     //debug
-    for (j = 0; j < data_info[1]; j++) {
-      hash_preimage[j] = (char) plain_key[i * data_info[1] + j];
-    }
+    /* for (j = 0; j < data_info[1]; j++) { */
+    /*   hash_preimage[j] = (char) plain_key[i * data_info[1] + j]; */
+    /* } */
     //printf("Preimage: %s\n", hash_preimage);
 
-
-
   }
+
   
   //  printf("Output: %08x%08x%08x%08x%08x\n", digest[0], digest[1], digest[2], digest[3], digest[4]);
-
-
-  
-  
-
 
   return false;
 }
@@ -388,16 +383,25 @@ int main(int argc, char **argv) {
   FILE *fp = fopen(argv[1], "r");
 
   char* hash = argv[2];
+  uint32_t hash_uint[5];
+  int i;
+  for (i = 0; i < 5; i++) {
+    const char* tmp_str = calloc(8, sizeof(char));
+    memcpy(tmp_str, &hash[i*8], 8);
+    hash_uint[i] = (uint32_t) strtol(tmp_str, NULL, 16);
+  }
+  //printf("hash:  %08x%08x%08x%08x%08x\n", hash_uint[0], hash_uint[1], hash_uint[2], hash_uint[3], hash_uint[4]);
+  
   int num_keys = pow(2, 18);
   // data_info[0] is the number of keys to process and data_info[1] is the size of each key
-  const uint data_info[2] = {(uint) num_keys, 16};
+  const uint32_t data_info[2] = {(uint32_t) num_keys, 16};
 
 
   build_kernel();
 
   size_t plain_key_size = sizeof(char) * data_info[1] * data_info[0];
   cl_int err;
-  data_info_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint) * 2, NULL, &err);
+  data_info_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, sizeof(uint32_t) * 2, NULL, &err);
   plain_key_buffer = clCreateBuffer(context, CL_MEM_READ_ONLY, plain_key_size, NULL, &err);
   digest_buffer = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(cl_uint) * 5 * data_info[0], NULL, &err);
 
@@ -421,9 +425,9 @@ int main(int argc, char **argv) {
   unsigned char plain_key[data_info[0] * data_info[1]];
   memset(plain_key, 0, sizeof(plain_key)); // zeroes the entries
 
-  int i = 0;
+
   int j = 0;
-  uint nextchar;
+  uint32_t nextchar;
   char* line = (char *) calloc(data_info[1] + 1, sizeof(char));
   size_t len = data_info[1] * sizeof(char);
   int bytes_read;
@@ -449,7 +453,7 @@ int main(int argc, char **argv) {
     i += data_info[1];
     if ((i + data_info[1]) > data_info[0]) {
       
-      if (find_sha1(plain_key, data_info, hash, hash_preimage)) {
+      if (find_sha1(plain_key, data_info, hash_uint, hash_preimage)) {
 	printf("sha1 inverse found: %s\n", hash_preimage);
 	cleanup(&line, fp);
 	exit(0);
@@ -462,7 +466,7 @@ int main(int argc, char **argv) {
   }
 
   // Try the last batch: incompletely filled.
-  if (find_sha1(plain_key, data_info, hash, hash_preimage)) {
+  if (find_sha1(plain_key, data_info, hash_uint, hash_preimage)) {
     printf("sha1 inverse found: %s\n", hash_preimage);
   }
   else {

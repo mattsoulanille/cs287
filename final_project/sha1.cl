@@ -24,11 +24,13 @@
 
 // Modified from: https://en.wikipedia.org/wiki/Circular_shift
 #define CHAR_BIT 8
-
+// also from https://github.com/Fruneng/opencl_sha_al_im/blob/master/sha1/sha1.cl
 static uint leftrotate(uint value, uint count) {
-    const uint mask = (CHAR_BIT*sizeof(value)-1);
-    count &= mask;
-    return (value<<count) | (value>>( (-count) & mask ));
+  return ((value << count) & 0xFFFFFFFF) | (value) >> (32 - (count));
+  
+  //  const uint mask = (CHAR_BIT*sizeof(value)-1);
+  //  count &= mask;
+  //  return (value<<count) | (value>>( (-count) & mask ));
 }
 
 
@@ -130,9 +132,12 @@ __kernel void sha1_crypt_kernel(__global uint *data_info, __global uchar *plain_
   memcpy(w, message, sizeof(uint) * 16);
 
   // Generate the other 64 words
+
+  // Slowness is here
   for (i = 16; i < 80; i++) {
     w[i] = leftrotate( (w[i-3] ^ w[i-8] ^ w[i-14] ^ w[i-16]), 1);
   }
+
 
   // debugging
   /*
@@ -192,11 +197,11 @@ __kernel void sha1_crypt_kernel(__global uint *data_info, __global uchar *plain_
     b = a;
     a = tmp;
 
-    /*
-    if (gid == 0) {
-      printf("%08x %08x %08x %08x %08x\n", a, b, c, d, e);
-    }
-    */
+
+//    if (gid == 0) {
+//      printf("%08x %08x %08x %08x %08x\n", a, b, c, d, e);
+//    }
+
   }
 
   h0 = h0 + a;
